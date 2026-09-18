@@ -3,7 +3,7 @@
   "name": "Cosmos Graph Visualizer",
   "icons": [
     {
-      "src": "gremlin-visualiser.png",
+      "src": "cosmos-graph-visualizer.png",
       "sizes": "64x64",
       "type": "image/png"
     }
