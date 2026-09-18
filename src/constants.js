@@ -1,9 +1,12 @@
 const SERVER_URL = import.meta.env.VITE_API_BASE_URL || '';
 export const QUERY_ENDPOINT = `${SERVER_URL}/query`;
 export const COMMON_GREMLIN_ERROR = 'Invalid query. Please execute a query to get a set of vertices';
+export const EMPTY_GREMLIN_QUERY_ERROR = 'Enter a Gremlin query before executing.';
+export const QUERY_RUNNING_MESSAGE = 'Executing Gremlin traversal...';
 export const ACTIONS = {
   SET_QUERY: 'SET_QUERY',
   SET_ERROR: 'SET_ERROR',
+  SET_QUERY_STATUS: 'SET_QUERY_STATUS',
   SET_NETWORK: 'SET_NETWORK',
   CLEAR_GRAPH: 'CLEAR_GRAPH',
   ADD_NODES: 'ADD_NODES',

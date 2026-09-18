@@ -1,20 +1,50 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import { Button, TextField }  from '@material-ui/core';
-import { ACTIONS, COMMON_GREMLIN_ERROR } from '../../constants';
+import {
+  ACTIONS,
+  COMMON_GREMLIN_ERROR,
+  EMPTY_GREMLIN_QUERY_ERROR,
+  QUERY_RUNNING_MESSAGE
+} from '../../constants';
 import { executeQuery } from '../../api/gremlinApi';
 import { onFetchQuery } from '../../logics/actionHelper';
+
+const DEMO_QUERY = 'g.V().limit(25)';
+
+const formatQuerySummary = ({ nodes, edges }) => {
+  const nodeLabel = nodes === 1 ? 'node' : 'nodes';
+  const edgeLabel = edges === 1 ? 'edge' : 'edges';
+  return `Query complete. Added ${nodes} ${nodeLabel} and ${edges} ${edgeLabel}.`;
+};
 
 class Header extends React.Component {
   clearGraph() {
     this.props.dispatch({ type: ACTIONS.CLEAR_GRAPH });
     this.props.dispatch({ type: ACTIONS.CLEAR_QUERY_HISTORY });
+    this.props.dispatch({
+      type: ACTIONS.SET_QUERY_STATUS,
+      payload: { status: 'idle', message: 'Graph cleared. Run a query to rebuild the workspace.' }
+    });
   }
 
   sendQuery() {
-    this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: null });
-    executeQuery({ query: this.props.query, nodeLimit: this.props.nodeLimit }).then((response) => {
-      onFetchQuery(response, this.props.query, this.props.nodeLabels, this.props.dispatch);
+    const query = this.props.query.trim();
+    if (!query) {
+      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: EMPTY_GREMLIN_QUERY_ERROR });
+      return;
+    }
+
+    this.props.dispatch({
+      type: ACTIONS.SET_QUERY_STATUS,
+      payload: { status: 'running', message: QUERY_RUNNING_MESSAGE }
+    });
+    executeQuery({ query, nodeLimit: this.props.nodeLimit }).then((response) => {
+      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch);
+      this.props.dispatch({
+        type: ACTIONS.SET_QUERY_STATUS,
+        payload: { status: 'success', message: formatQuerySummary(summary) }
+      });
     }).catch((error) => {
       console.error('Error sending query:', error);
       this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: COMMON_GREMLIN_ERROR });
@@ -30,13 +60,22 @@ class Header extends React.Component {
     this.sendQuery();
   }
 
+  useDemoQuery() {
+    this.onQueryChanged(DEMO_QUERY);
+    this.props.dispatch({
+      type: ACTIONS.SET_QUERY_STATUS,
+      payload: { status: 'idle', message: 'Demo traversal loaded. Execute it to refresh the graph.' }
+    });
+  }
+
   render(){
+    const isExecuting = this.props.queryStatus === 'running';
     return (
       <div className={'header'}>
         <div className="header__topline">
           <div>
-            <p className="header__eyebrow">Graph query workspace</p>
             <h1 className="header__title">Gremlin Visualiser</h1>
+            <p className="header__subtitle">Cosmos graph exploration console</p>
           </div>
           <div className="header__meta" aria-label="Graph summary">
             <span className="metric-pill">
@@ -63,9 +102,10 @@ class Header extends React.Component {
             variant="contained"
             color="primary"
             type="submit"
+            disabled={isExecuting}
             className="query-button query-button--execute"
           >
-            Execute
+            {isExecuting ? 'Executing...' : 'Execute'}
           </Button>
           <Button
             variant="outlined"
@@ -76,6 +116,18 @@ class Header extends React.Component {
             Clear Graph
           </Button>
         </form>
+
+        <div className={`query-status query-status--${this.props.queryStatus}`} role="status">
+          <span>{this.props.queryStatusMessage}</span>
+          <Button
+            variant="text"
+            size="small"
+            onClick={this.useDemoQuery.bind(this)}
+            className="query-status__demo"
+          >
+            Use demo query
+          </Button>
+        </div>
 
         {this.props.error && <div className="error-banner" role="alert">{this.props.error}</div>}
       </div>
@@ -88,6 +140,8 @@ export const HeaderComponent = connect((state)=>{
   return {
     query: state.gremlin.query,
     error: state.gremlin.error,
+    queryStatus: state.gremlin.queryStatus,
+    queryStatusMessage: state.gremlin.queryStatusMessage,
     nodes: state.graph.nodes,
     edges: state.graph.edges,
     nodeLabels: state.options.nodeLabels,

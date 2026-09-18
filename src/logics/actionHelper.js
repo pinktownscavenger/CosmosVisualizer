@@ -7,4 +7,5 @@ export const onFetchQuery = (result, query, oldNodeLabels, dispatch) => {
   dispatch({ type: ACTIONS.ADD_EDGES, payload: edges });
   dispatch({ type: ACTIONS.SET_NODE_LABELS, payload: nodeLabels });
   dispatch({ type: ACTIONS.ADD_QUERY_HISTORY, payload: query });
+  return { nodes: nodes.length, edges: edges.length };
 };
