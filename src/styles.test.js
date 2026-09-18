@@ -17,4 +17,13 @@ describe('layout stylesheet contracts', () => {
     expect(declarationsFor('.mynetwork')).toContain('inset: 0');
     expect(declarationsFor('.mynetwork')).toContain('min-height: 0');
   });
+
+  it('prevents the right inspector from exposing horizontal overflow', () => {
+    expect(declarationsFor('.details')).toContain('overflow-x: hidden');
+  });
+
+  it('themes scrollbars for the dark workbench surfaces', () => {
+    expect(stylesheet).toContain('scrollbar-color:');
+    expect(stylesheet).toContain('::-webkit-scrollbar-thumb');
+  });
 });

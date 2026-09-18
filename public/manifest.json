@@ -1,6 +1,6 @@
 {
-  "short_name": "Gremlin-Visualiser",
-  "name": "Gremlin Visualiser",
+  "short_name": "Cosmos Graph",
+  "name": "Cosmos Graph Visualizer",
   "icons": [
     {
       "src": "gremlin-visualiser.png",

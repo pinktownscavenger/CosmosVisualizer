@@ -9,13 +9,34 @@ import PlayCircleFilledIcon from '@material-ui/icons/PlayCircleFilled';
 import RestoreIcon from '@material-ui/icons/Restore';
 import ZoomInIcon from '@material-ui/icons/ZoomIn';
 import ZoomOutIcon from '@material-ui/icons/ZoomOut';
+import CloseIcon from '@material-ui/icons/Close';
 import { ACTIONS } from '../../constants';
 import { applyGraphControl } from '../../logics/graphControls';
+
+export const GraphHint = ({ visible, onDismiss }) => {
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <div className="graph-hint">
+      <span>Click a node or edge to inspect it, then traverse from the selected node.</span>
+      <Tooltip title="Dismiss hint">
+        <IconButton aria-label="Dismiss graph hint" size="small" onClick={onDismiss}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </div>
+  );
+};
 
 class NetworkGraph extends React.Component{
   constructor(props) {
     super(props);
     this.networkRef = React.createRef();
+    this.state = {
+      isHintVisible: true
+    };
   }
 
   componentDidMount() {
@@ -115,7 +136,10 @@ class NetworkGraph extends React.Component{
             </IconButton>
           </Tooltip>
         </div>
-        <p className="graph-hint">Click a node or edge to inspect it, then traverse from the selected node.</p>
+        <GraphHint
+          visible={this.state.isHintVisible}
+          onDismiss={() => this.setState({ isHintVisible: false })}
+        />
         <div ref={this.networkRef} className={'mynetwork'} />
       </section>
     );

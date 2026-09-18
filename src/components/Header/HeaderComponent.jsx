@@ -74,7 +74,7 @@ class Header extends React.Component {
       <div className={'header'}>
         <div className="header__topline">
           <div>
-            <h1 className="header__title">Gremlin Visualiser</h1>
+            <h1 className="header__title">Cosmos Graph Visualizer</h1>
             <p className="header__subtitle">Cosmos graph exploration console</p>
           </div>
           <div className="header__meta" aria-label="Graph summary">
