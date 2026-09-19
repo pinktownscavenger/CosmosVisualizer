@@ -3,28 +3,26 @@ import { connect } from 'react-redux';
 import { Button, TextField }  from '@material-ui/core';
 import {
   ACTIONS,
-  COMMON_GREMLIN_ERROR,
   EMPTY_GREMLIN_QUERY_ERROR,
-  QUERY_RUNNING_MESSAGE
+  QUERY_RUNNING_MESSAGE,
+  TOO_LONG_GREMLIN_QUERY_ERROR
 } from '../../constants';
 import { executeQuery } from '../../api/gremlinApi';
 import { onFetchQuery } from '../../logics/actionHelper';
+import {
+  getQueryFailureFeedback,
+  getQueryResultStatus,
+  isQueryTooLong
+} from '../../logics/queryFeedback';
 
 const DEMO_QUERY = 'g.V().limit(25)';
 
-const formatQuerySummary = ({ nodes, edges }) => {
-  const nodeLabel = nodes === 1 ? 'node' : 'nodes';
-  const edgeLabel = edges === 1 ? 'edge' : 'edges';
-  return `Query complete. Added ${nodes} ${nodeLabel} and ${edges} ${edgeLabel}.`;
-};
-
-class Header extends React.Component {
+export class Header extends React.Component {
   clearGraph() {
     this.props.dispatch({ type: ACTIONS.CLEAR_GRAPH });
-    this.props.dispatch({ type: ACTIONS.CLEAR_QUERY_HISTORY });
     this.props.dispatch({
       type: ACTIONS.SET_QUERY_STATUS,
-      payload: { status: 'idle', message: 'Graph cleared. Run a query to rebuild the workspace.' }
+      payload: { status: 'idle', message: 'Graph cleared. Query history is still available for reruns.' }
     });
   }
 
@@ -34,6 +32,10 @@ class Header extends React.Component {
       this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: EMPTY_GREMLIN_QUERY_ERROR });
       return;
     }
+    if (isQueryTooLong(query)) {
+      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: TOO_LONG_GREMLIN_QUERY_ERROR });
+      return;
+    }
 
     this.props.dispatch({
       type: ACTIONS.SET_QUERY_STATUS,
@@ -41,13 +43,15 @@ class Header extends React.Component {
     });
     executeQuery({ query, nodeLimit: this.props.nodeLimit }).then((response) => {
       const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch);
+      const resultStatus = getQueryResultStatus(summary);
       this.props.dispatch({
         type: ACTIONS.SET_QUERY_STATUS,
-        payload: { status: 'success', message: formatQuerySummary(summary) }
+        payload: resultStatus
       });
     }).catch((error) => {
       console.error('Error sending query:', error);
-      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: COMMON_GREMLIN_ERROR });
+      const feedback = getQueryFailureFeedback(error);
+      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: `${feedback.title}. ${feedback.message}` });
     });
   }
 

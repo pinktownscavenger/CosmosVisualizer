@@ -62,10 +62,10 @@ const initialState = {
         color: { background: '#f43f5e', border: '#fecdd3' },
         shape: 'box',
         margin: {
-          top: 5,
-          right: 8,
-          bottom: 5,
-          left: 8
+          top: 7,
+          right: 14,
+          bottom: 7,
+          left: 14
         },
         font: {
           color: '#fff1f2',

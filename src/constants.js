@@ -1,7 +1,9 @@
 const SERVER_URL = import.meta.env.VITE_API_BASE_URL || '';
+export const MAX_QUERY_LENGTH = 10000;
 export const QUERY_ENDPOINT = `${SERVER_URL}/query`;
 export const COMMON_GREMLIN_ERROR = 'Invalid query. Please execute a query to get a set of vertices';
 export const EMPTY_GREMLIN_QUERY_ERROR = 'Enter a Gremlin query before executing.';
+export const TOO_LONG_GREMLIN_QUERY_ERROR = `Gremlin query is too long. Keep traversals under ${MAX_QUERY_LENGTH} characters before sending them to Cosmos.`;
 export const QUERY_RUNNING_MESSAGE = 'Executing Gremlin traversal...';
 export const ACTIONS = {
   SET_QUERY: 'SET_QUERY',

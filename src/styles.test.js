@@ -26,4 +26,16 @@ describe('layout stylesheet contracts', () => {
     expect(stylesheet).toContain('scrollbar-color:');
     expect(stylesheet).toContain('::-webkit-scrollbar-thumb');
   });
+
+  it('keeps compact action targets large enough for touch and pointer use', () => {
+    expect(declarationsFor('.query-status__demo.MuiButton-root')).toContain('min-height: 36px');
+    expect(declarationsFor('.graph-hint .MuiIconButton-root')).toContain('width: 36px');
+    expect(declarationsFor('.graph-hint .MuiIconButton-root')).toContain('height: 36px');
+  });
+
+  it('defines a mobile selected-result sheet treatment', () => {
+    expect(stylesheet).toContain('.selected-panel--mobile-sheet');
+    expect(stylesheet).toContain('position: fixed');
+    expect(stylesheet).toContain('max-height: 58vh');
+  });
 });

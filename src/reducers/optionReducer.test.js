@@ -77,4 +77,12 @@ describe('option reducer', () => {
       type: ACTIONS.SET_NODE_LABELS
     }).nodeLabels).toEqual([]);
   });
+
+  it('gives tag-shaped nodes enough label padding for the Production demo node', () => {
+    const tagGroup = reducer(undefined, { type: 'UNKNOWN' }).networkOptions.groups.tag;
+
+    expect(tagGroup.shape).toBe('box');
+    expect(tagGroup.margin.left).toBeGreaterThanOrEqual(14);
+    expect(tagGroup.margin.right).toBeGreaterThanOrEqual(14);
+  });
 });
