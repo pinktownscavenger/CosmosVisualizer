@@ -41,7 +41,31 @@ describe('gremlin API client', () => {
 
     await expect(executeQuery({ query: 'g.V()', nodeLimit: 25 }))
       .rejects
-      .toThrow('Query request failed with status 500');
+      .toMatchObject({
+        kind: 'server',
+        status: 500,
+        message: 'Query request failed with status 500'
+      });
+  });
+
+  it('classifies validation and oversized query responses', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: vi.fn()
+    });
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 413,
+      json: vi.fn()
+    });
+
+    await expect(executeQuery({ query: '', nodeLimit: 25 }))
+      .rejects
+      .toMatchObject({ kind: 'validation', status: 400 });
+    await expect(executeQuery({ query: 'g.V()', nodeLimit: 25 }))
+      .rejects
+      .toMatchObject({ kind: 'payload-too-large', status: 413 });
   });
 
   it('throws when fetch rejects', async () => {
@@ -50,6 +74,9 @@ describe('gremlin API client', () => {
 
     await expect(executeQuery({ query: 'g.V()', nodeLimit: 25 }))
       .rejects
-      .toBe(networkError);
+      .toMatchObject({
+        kind: 'network',
+        message: 'network unavailable'
+      });
   });
 });

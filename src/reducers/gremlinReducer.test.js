@@ -31,6 +31,16 @@ describe('gremlin reducer', () => {
     });
   });
 
+  it('stores empty-result status messages after a query returns no vertices', () => {
+    expect(reducer(undefined, {
+      type: ACTIONS.SET_QUERY_STATUS,
+      payload: { status: 'empty', message: 'Query ran, but Cosmos returned no vertices for this traversal.' }
+    })).toMatchObject({
+      queryStatus: 'empty',
+      queryStatusMessage: 'Query ran, but Cosmos returned no vertices for this traversal.'
+    });
+  });
+
   it('moves to an error status when an error is set', () => {
     expect(reducer(undefined, {
       type: ACTIONS.SET_ERROR,
