@@ -1,4 +1,4 @@
-import { QUERY_ENDPOINT } from '../constants';
+import { QUERY_ENDPOINT, TRAVERSE_ENDPOINT } from '../constants';
 import { QUERY_FAILURE_KINDS } from '../logics/queryFeedback';
 
 const createQueryRequestError = ({ kind, status, message }) => {
@@ -8,14 +8,14 @@ const createQueryRequestError = ({ kind, status, message }) => {
   return error;
 };
 
-export const executeQuery = ({ query, nodeLimit }) => {
-  return fetch(QUERY_ENDPOINT, {
+const postGraphRequest = (endpoint, body) => {
+  return fetch(endpoint, {
     method: 'POST',
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ query, nodeLimit })
+    body: JSON.stringify(body)
   }).then((response) => {
     if (!response.ok) {
       const kind = response.status === 400
@@ -44,4 +44,12 @@ export const executeQuery = ({ query, nodeLimit }) => {
       message: error.message
     });
   });
+};
+
+export const executeQuery = ({ query, nodeLimit }) => {
+  return postGraphRequest(QUERY_ENDPOINT, { query, nodeLimit });
+};
+
+export const executeTraversal = ({ nodeId, direction, nodeLimit }) => {
+  return postGraphRequest(TRAVERSE_ENDPOINT, { nodeId, direction, nodeLimit });
 };

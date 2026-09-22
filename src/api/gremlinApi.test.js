@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { executeQuery } from './gremlinApi';
-import { QUERY_ENDPOINT } from '../constants';
+import { executeQuery, executeTraversal } from './gremlinApi';
+import { QUERY_ENDPOINT, TRAVERSE_ENDPOINT } from '../constants';
 import { normalizedGraph } from '../__fixtures__/graphFixtures';
 
 describe('gremlin API client', () => {
@@ -30,6 +30,38 @@ describe('gremlin API client', () => {
       },
       body: JSON.stringify({ query: 'g.V()', nodeLimit: 25 })
     });
+  });
+
+  it('posts traversal requests to the traversal endpoint', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(normalizedGraph)
+    });
+
+    await expect(executeTraversal({ nodeId: 'person-1', direction: 'out', nodeLimit: 25 })).resolves.toEqual({
+      data: normalizedGraph
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(TRAVERSE_ENDPOINT, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ nodeId: 'person-1', direction: 'out', nodeLimit: 25 })
+    });
+  });
+
+  it('classifies traversal request failures with the same query feedback kinds', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: vi.fn()
+    });
+
+    await expect(executeTraversal({ nodeId: '', direction: 'out', nodeLimit: 25 }))
+      .rejects
+      .toMatchObject({ kind: 'validation', status: 400 });
   });
 
   it('throws when the server returns a non-success status', async () => {

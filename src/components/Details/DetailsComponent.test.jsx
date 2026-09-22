@@ -6,12 +6,13 @@ import {
   QueryHistoryList,
   SelectedResultPanel
 } from './DetailsComponent';
-import { executeQuery } from '../../api/gremlinApi';
+import { executeQuery, executeTraversal } from '../../api/gremlinApi';
 import { ACTIONS } from '../../constants';
 import { normalizedGraph } from '../../__fixtures__/graphFixtures';
 
 vi.mock('../../api/gremlinApi', () => ({
-  executeQuery: vi.fn()
+  executeQuery: vi.fn(),
+  executeTraversal: vi.fn()
 }));
 
 describe('query history list', () => {
@@ -101,5 +102,29 @@ describe('details query history actions', () => {
       type: ACTIONS.SET_QUERY_STATUS,
       payload: { status: 'success', message: 'Query complete. Added 4 nodes and 9 edges.' }
     });
+  });
+});
+
+describe('details traversal actions', () => {
+  it('requests connected traversal results without clearing the existing graph', async () => {
+    const dispatch = vi.fn();
+    executeTraversal.mockResolvedValue({ data: normalizedGraph });
+
+    const details = new Details({
+      dispatch,
+      nodeLimit: 100,
+      nodeLabels: []
+    });
+
+    await details.onTraverse('person-1', 'out');
+
+    expect(executeTraversal).toHaveBeenCalledWith({
+      nodeId: 'person-1',
+      direction: 'out',
+      nodeLimit: 100
+    });
+    expect(dispatch).not.toHaveBeenCalledWith({ type: ACTIONS.CLEAR_GRAPH });
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.ADD_NODES, payload: expect.any(Array) });
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.ADD_EDGES, payload: expect.any(Array) });
   });
 });
