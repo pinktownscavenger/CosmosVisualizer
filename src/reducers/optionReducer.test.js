@@ -82,7 +82,8 @@ describe('option reducer', () => {
     const tagGroup = reducer(undefined, { type: 'UNKNOWN' }).networkOptions.groups.tag;
 
     expect(tagGroup.shape).toBe('box');
-    expect(tagGroup.margin.left).toBeGreaterThanOrEqual(14);
-    expect(tagGroup.margin.right).toBeGreaterThanOrEqual(14);
+    expect(tagGroup.margin.left).toBeGreaterThanOrEqual(20);
+    expect(tagGroup.margin.right).toBeGreaterThanOrEqual(20);
+    expect(tagGroup.labelHighlightBold).toBe(false);
   });
 });
