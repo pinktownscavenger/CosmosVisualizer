@@ -30,6 +30,28 @@ export const GraphHint = ({ visible, onDismiss }) => {
   );
 };
 
+export const refreshNetworkNodeMeasurementsAfterFonts = (network, fontSet) => {
+  const browserFonts = typeof document !== 'undefined' ? document.fonts : undefined;
+  const fonts = fontSet || browserFonts;
+  const fontReady = fonts && fonts.ready ? fonts.ready : Promise.resolve();
+
+  return fontReady.then(() => {
+    if (!network) {
+      return;
+    }
+
+    Object.values(network.body && network.body.nodes ? network.body.nodes : {}).forEach((node) => {
+      if (node && typeof node.needsRefresh === 'function') {
+        node.needsRefresh();
+      }
+    });
+
+    if (typeof network.redraw === 'function') {
+      network.redraw();
+    }
+  });
+};
+
 class NetworkGraph extends React.Component{
   constructor(props) {
     super(props);
@@ -46,6 +68,7 @@ class NetworkGraph extends React.Component{
     };
     const network = new vis.Network(this.networkRef.current, data, this.props.networkOptions);
     this.network = network;
+    refreshNetworkNodeMeasurementsAfterFonts(network);
 
     network.on('stabilized', () => {
       network.stopSimulation();
