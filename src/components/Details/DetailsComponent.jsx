@@ -32,7 +32,7 @@ import ArrowForwardIcon from '@material-ui/icons/ArrowForward';
 import CloseIcon from '@material-ui/icons/Close';
 import { JsonToTable } from 'react-json-to-table';
 import { ACTIONS } from '../../constants';
-import { executeQuery } from '../../api/gremlinApi';
+import { executeQuery, executeTraversal } from '../../api/gremlinApi';
 import { onFetchQuery} from '../../logics/actionHelper';
 import { getQueryFailureFeedback, getQueryResultStatus } from '../../logics/queryFeedback';
 import { stringifyObjectValues} from '../../logics/utils';
@@ -204,7 +204,7 @@ export class Details extends React.Component {
 
   onTraverse(nodeId, direction) {
     const query = `g.V('${nodeId}').${direction}()`;
-    executeQuery({ query, nodeLimit: this.props.nodeLimit }).then((response) => {
+    return executeTraversal({ nodeId, direction, nodeLimit: this.props.nodeLimit }).then((response) => {
       onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch);
     }).catch((error) => {
       this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: COMMON_GREMLIN_ERROR });
