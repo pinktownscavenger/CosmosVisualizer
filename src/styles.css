@@ -88,7 +88,9 @@ textarea:focus-visible,
 
 .workspace-panel {
   display: flex;
+  height: clamp(560px, calc(100vh - 250px), 900px);
   min-height: 0;
+  overflow: hidden;
 }
 
 .workspace-panel > .MuiGrid-container {
@@ -291,6 +293,7 @@ textarea:focus-visible,
 }
 
 .graph-frame {
+  height: clamp(560px, calc(100vh - 250px), 900px);
   min-height: 0;
 }
 
@@ -418,6 +421,14 @@ textarea:focus-visible,
 .details__section .MuiExpansionPanelSummary-root {
   min-height: 48px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.details__section .MuiExpansionPanelSummary-expandIcon {
+  color: var(--color-text);
+}
+
+.details__section .MuiExpansionPanelSummary-expandIcon.Mui-expanded {
+  color: var(--color-text);
 }
 
 .details__section .MuiExpansionPanelSummary-content {
@@ -674,6 +685,12 @@ textarea:focus-visible,
   .graph-workspace {
     height: 62vh;
     min-height: 420px;
+  }
+
+  .graph-frame,
+  .workspace-panel {
+    height: auto;
+    min-height: 0;
   }
 
   .mynetwork {
