@@ -4,6 +4,7 @@ node_modules
 docs/
 pvt/
 .impeccable/
+.playwright-mcp/
 .env
 .env.local
 .env.*.local
