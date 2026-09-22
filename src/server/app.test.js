@@ -94,6 +94,68 @@ describe('server app', () => {
     expect(console.error).toHaveBeenCalledWith('Error fetching graph data:', error);
     console.error.mockRestore();
   });
+
+  it('rejects invalid traversal requests', async () => {
+    const submit = vi.fn();
+    const app = createApp({ client: makeClient(submit) });
+
+    await request(app).post('/traverse').send({ direction: 'out' }).expect(400);
+    await request(app).post('/traverse').send({ nodeId: 'person-1', direction: 'sideways' }).expect(400);
+
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('returns only outbound neighbors and edges connected to the selected node', async () => {
+    const vertices = [rawVertices[0], rawVertices[1], rawVertices[2]];
+    const edges = [rawEdges[0], rawEdges[1], rawEdges[2]];
+    const submit = vi.fn()
+      .mockResolvedValueOnce({ _items: vertices })
+      .mockResolvedValueOnce({ _items: edges });
+    const app = createApp({ client: makeClient(submit) });
+
+    const response = await request(app)
+      .post('/traverse')
+      .send({ nodeId: 'person-1', direction: 'out', nodeLimit: 2 })
+      .expect(200);
+
+    expect(response.body.map(vertex => vertex.id)).toEqual(['person-1', 'company-1', 'project-1']);
+    expect(response.body.flatMap(vertex => vertex.edges).map(edge => edge.id)).toEqual([
+      'edge-1',
+      'edge-2',
+      'edge-3',
+      'edge-1',
+      'edge-2',
+      'edge-3'
+    ]);
+    expect(submit.mock.calls[0][0]).toContain("g.V('person-1').union(identity(), out().limit(2)).dedup()");
+    expect(submit.mock.calls[1][0]).toContain("g.V('person-1').outE()");
+    expect(submit.mock.calls[1][0]).toContain("where(inV().hasId('company-1','project-1'))");
+  });
+
+  it('returns only inbound neighbors and edges connected to the selected node', async () => {
+    const vertices = [rawVertices[2], rawVertices[0]];
+    const edges = [rawEdges[1], rawEdges[2]];
+    const submit = vi.fn()
+      .mockResolvedValueOnce({ _items: vertices })
+      .mockResolvedValueOnce({ _items: edges });
+    const app = createApp({ client: makeClient(submit) });
+
+    const response = await request(app)
+      .post('/traverse')
+      .send({ nodeId: 'project-1', direction: 'in', nodeLimit: 5 })
+      .expect(200);
+
+    expect(response.body.map(vertex => vertex.id)).toEqual(['project-1', 'person-1']);
+    expect(response.body.flatMap(vertex => vertex.edges).map(edge => edge.id)).toEqual([
+      'edge-2',
+      'edge-3',
+      'edge-2',
+      'edge-3'
+    ]);
+    expect(submit.mock.calls[0][0]).toContain("g.V('project-1').union(identity(), in().limit(5)).dedup()");
+    expect(submit.mock.calls[1][0]).toContain("g.V('project-1').inE()");
+    expect(submit.mock.calls[1][0]).toContain("where(outV().hasId('person-1'))");
+  });
 });
 
 describe('query validation', () => {

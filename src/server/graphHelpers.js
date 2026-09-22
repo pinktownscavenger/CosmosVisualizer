@@ -101,11 +101,45 @@ function makeVertexQuery(query, nodeLimit) {
   return `${query}${makeLimitClause(nodeLimit)}`;
 }
 
+function makeTraversalVertexQuery(nodeId, direction, nodeLimit) {
+  const id = `'${escapeGremlinString(nodeId)}'`;
+  const step = direction === 'in' ? 'in' : 'out';
+  return `g.V(${id}).union(identity(), ${step}()${makeLimitClause(nodeLimit)}).dedup()`;
+}
+
+function makeTraversalEdgeQuery(nodeId, direction, neighborIds) {
+  if (neighborIds.length === 0) {
+    return null;
+  }
+
+  const id = `'${escapeGremlinString(nodeId)}'`;
+  const ids = neighborIds
+    .map(neighborId => typeof neighborId === 'string' ? neighborId : JSON.stringify(neighborId))
+    .map(neighborId => `'${escapeGremlinString(neighborId)}'`)
+    .join(',');
+  const edgeStep = direction === 'in' ? 'inE' : 'outE';
+  const vertexStep = direction === 'in' ? 'outV' : 'inV';
+
+  return `
+    g.V(${id}).${edgeStep}()
+      .where(${vertexStep}().hasId(${ids}))
+      .dedup()
+      .project('id', 'label', 'from', 'to', 'properties')
+      .by(id())
+      .by(label())
+      .by(outV().id())
+      .by(inV().id())
+      .by(valueMap())
+  `;
+}
+
 module.exports = {
   buildEdgeMap,
   escapeGremlinString,
   makeEdgeQuery,
   makeLimitClause,
+  makeTraversalEdgeQuery,
+  makeTraversalVertexQuery,
   makeVertexQuery,
   mapPropertiesToObj,
   normalizeEdge,
