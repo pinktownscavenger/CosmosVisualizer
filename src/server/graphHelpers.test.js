@@ -5,6 +5,8 @@ const {
   escapeGremlinString,
   makeEdgeQuery,
   makeLimitClause,
+  makeTraversalEdgeQuery,
+  makeTraversalVertexQuery,
   makeVertexQuery,
   mapPropertiesToObj,
   normalizeEdge,
@@ -82,5 +84,25 @@ describe('graph helper query builders', () => {
   it('appends a valid node limit to vertex queries', () => {
     expect(makeVertexQuery('g.V()', 2)).toBe('g.V().limit(2)');
     expect(makeVertexQuery('g.V()', '')).toBe('g.V()');
+  });
+
+  it('builds traversal vertex queries that keep the selected origin node', () => {
+    expect(makeTraversalVertexQuery('person-1', 'out', 3)).toContain(
+      "g.V('person-1').union(identity(), out().limit(3)).dedup()"
+    );
+    expect(makeTraversalVertexQuery("tag-'quoted\\id", 'in', '')).toContain(
+      "g.V('tag-\\'quoted\\\\id').union(identity(), in()).dedup()"
+    );
+  });
+
+  it('builds traversal edge queries scoped to the selected node and returned neighbors', () => {
+    const outQuery = makeTraversalEdgeQuery('person-1', 'out', ['company-1', 'project-1']);
+    const inQuery = makeTraversalEdgeQuery('project-1', 'in', ['person-1']);
+
+    expect(outQuery).toContain("g.V('person-1').outE()");
+    expect(outQuery).toContain("where(inV().hasId('company-1','project-1'))");
+    expect(inQuery).toContain("g.V('project-1').inE()");
+    expect(inQuery).toContain("where(outV().hasId('person-1'))");
+    expect(makeTraversalEdgeQuery('person-1', 'out', [])).toBeNull();
   });
 });
