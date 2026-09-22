@@ -1,9 +1,9 @@
 {
-  "short_name": "Cosmos Graph",
-  "name": "Cosmos Graph Visualizer",
+  "short_name": "CosmosVisualizer",
+  "name": "CosmosVisualizer",
   "icons": [
     {
-      "src": "cosmos-graph-visualizer.png",
+      "src": "cosmos-visualizer.png",
       "sizes": "64x64",
       "type": "image/png"
     }

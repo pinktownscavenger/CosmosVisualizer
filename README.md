@@ -1,36 +1,36 @@
-# Cosmos Gremlin Visualiser
+# CosmosVisualizer
 
-[![CI](https://github.com/pinktownscavenger/CosmosVisualiser/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pinktownscavenger/CosmosVisualiser/actions/workflows/ci.yml)
+[![CI](https://github.com/pinktownscavenger/CosmosVisualizer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pinktownscavenger/CosmosVisualizer/actions/workflows/ci.yml)
 
 Cosmos-native Gremlin graph visualization that is credential-free to try with fixture data.
 
 This project is a modernized fork of [prabushitha/gremlin-visualizer](https://github.com/prabushitha/gremlin-visualizer), originally created by Umesh Prabushitha Jayasinghe and released under the MIT License.
 
-![Cosmos Gremlin Visualiser dashboard](.github/assets/cosmos-gremlin-visualiser-overview.png)
+![CosmosVisualizer dashboard](.github/assets/cosmos-visualizer-overview.png)
 
-Cosmos Gremlin Visualiser is a local React workspace for exploring Azure Cosmos DB Gremlin API graphs. It starts with a credential-free demo graph, lets you run Gremlin vertex queries through a local proxy, renders the returned graph with `vis-network`, and gives you a focused side panel for labels, limits, physics, history, and selected graph details.
+CosmosVisualizer is a local React workspace for exploring Azure Cosmos DB Gremlin API graphs. It starts with a credential-free demo graph, lets you run Gremlin vertex queries through a local proxy, renders the returned graph with `vis-network`, and gives you a focused side panel for labels, limits, physics, history, and selected graph details.
 
 ## Demo
 
 The fixture-mode demo shows the credential-free query path pulling a graph with `g.V().limit(25)`.
 
-![Fixture-mode demo recording](.github/assets/cosmos-gremlin-visualiser-demo.webp)
+![Fixture-mode demo recording](.github/assets/cosmos-visualizer-demo.webp)
 
 A source H.264 MP4 is also available:
 
-[Watch the demo recording](.github/assets/cosmos-gremlin-visualiser-demo.mp4)
+[Watch the demo recording](.github/assets/cosmos-visualizer-demo.mp4)
 
-GitHub does not reliably render committed `.mp4` files inline in README files. For a native inline GitHub video player, upload `.github/assets/cosmos-gremlin-visualiser-demo.mp4` through a GitHub issue, pull request, or README web-editor attachment flow, then paste the generated `https://github.com/user-attachments/assets/...` URL here on its own line.
+GitHub does not reliably render committed `.mp4` files inline in README files. For a native inline GitHub video player, upload `.github/assets/cosmos-visualizer-demo.mp4` through a GitHub issue, pull request, or README web-editor attachment flow, then paste the generated `https://github.com/user-attachments/assets/...` URL here on its own line.
 
 ## Screenshots
 
 ### Fixture Query Result
 
-![Fixture graph query result](.github/assets/cosmos-gremlin-visualiser-query-result.png)
+![Fixture graph query result](.github/assets/cosmos-visualizer-query-result.png)
 
 ### Graph Selection
 
-![Selected graph relationship](.github/assets/cosmos-gremlin-visualiser-selected.png)
+![Selected graph relationship](.github/assets/cosmos-visualizer-selected.png)
 
 ## Try It In Under A Minute
 
@@ -142,7 +142,7 @@ npm audit --omit=dev    # Check production dependency advisories
 Build the image from this repository:
 
 ```sh
-docker build --tag=cosmos-gremlin-visualiser:latest .
+docker build --tag=cosmos-visualizer:latest .
 ```
 
 Run it with your environment file:
@@ -152,8 +152,8 @@ docker run --rm \
   -p 5173:5173 \
   -p 3001:3001 \
   --env-file .env \
-  --name=cosmos-gremlin-visualiser \
-  cosmos-gremlin-visualiser:latest
+  --name=cosmos-visualizer \
+  cosmos-visualizer:latest
 ```
 
 To run the container with fixture data instead of Cosmos credentials:
@@ -163,8 +163,8 @@ docker run --rm \
   -p 5173:5173 \
   -p 3001:3001 \
   -e USE_FIXTURE_DATA=true \
-  --name=cosmos-gremlin-visualiser \
-  cosmos-gremlin-visualiser:latest
+  --name=cosmos-visualizer \
+  cosmos-visualizer:latest
 ```
 
 ## Security Notes
