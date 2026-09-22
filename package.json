@@ -1,8 +1,8 @@
 {
-  "name": "cosmos-graph-visualizer",
+  "name": "cosmos-visualizer",
   "version": "1.0.0",
   "author": "Umesh Jayasinghe",
-  "description": "Visualize Cosmos graph networks from Gremlin queries",
+  "description": "Explore Azure Cosmos DB Gremlin graphs locally",
   "license": "MIT",
   "engines": {
     "node": ">=20"

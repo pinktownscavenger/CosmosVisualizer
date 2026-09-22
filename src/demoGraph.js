@@ -24,11 +24,11 @@ export const demoNodes = [
   },
   {
     id: 'project-cosmos',
-    label: 'Cosmos Visualiser',
+    label: 'CosmosVisualizer',
     group: 'project',
     type: 'project',
     properties: {
-      name: 'Cosmos Visualiser',
+      name: 'CosmosVisualizer',
       status: 'Frontend revamp'
     }
   },
