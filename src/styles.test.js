@@ -12,14 +12,23 @@ const declarationsFor = (selector) => {
 
 describe('layout stylesheet contracts', () => {
   it('keeps the vis network canvas from increasing document height as it resizes', () => {
+    expect(declarationsFor('.graph-frame')).toContain('height: clamp(560px, calc(100vh - 250px), 900px)');
     expect(declarationsFor('.graph-workspace')).toContain('overflow: hidden');
     expect(declarationsFor('.mynetwork')).toContain('position: absolute');
     expect(declarationsFor('.mynetwork')).toContain('inset: 0');
     expect(declarationsFor('.mynetwork')).toContain('min-height: 0');
   });
 
-  it('prevents the right inspector from exposing horizontal overflow', () => {
+  it('keeps the right inspector scrolling independently from the graph', () => {
+    expect(declarationsFor('.workspace-panel')).toContain('height: clamp(560px, calc(100vh - 250px), 900px)');
+    expect(declarationsFor('.workspace-panel')).toContain('overflow: hidden');
     expect(declarationsFor('.details')).toContain('overflow-x: hidden');
+    expect(declarationsFor('.details')).toContain('overflow-y: auto');
+  });
+
+  it('renders details panel expansion icons on the dark surface', () => {
+    expect(declarationsFor('.details__section .MuiExpansionPanelSummary-expandIcon')).toContain('color: var(--color-text)');
+    expect(declarationsFor('.details__section .MuiExpansionPanelSummary-expandIcon.Mui-expanded')).toContain('color: var(--color-text)');
   });
 
   it('themes scrollbars for the dark workbench surfaces', () => {
