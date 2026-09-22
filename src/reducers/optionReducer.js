@@ -60,12 +60,13 @@ const initialState = {
       },
       tag: {
         color: { background: '#f43f5e', border: '#fecdd3' },
+        labelHighlightBold: false,
         shape: 'box',
         margin: {
           top: 7,
-          right: 14,
+          right: 20,
           bottom: 7,
-          left: 14
+          left: 20
         },
         font: {
           color: '#fff1f2',
