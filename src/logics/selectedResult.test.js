@@ -6,6 +6,7 @@ describe('selected result utilities', () => {
     const selectedNode = {
       id: 'person-1',
       type: 'person',
+      partition: { name: 'type', value: 'person' },
       properties: { name: 'Ada Lovelace' }
     };
 
@@ -13,6 +14,7 @@ describe('selected result utilities', () => {
       kind: 'node',
       id: 'person-1',
       type: 'person',
+      partition: { name: 'type', value: 'person' },
       properties: { name: 'Ada Lovelace' }
     });
   });
@@ -36,6 +38,7 @@ describe('selected result utilities', () => {
     const selectedNode = {
       id: 'person-1',
       type: 'person',
+      partition: { name: 'type', value: null },
       properties: { name: 'Ada Lovelace' }
     };
     const selectedEdge = {
@@ -48,6 +51,7 @@ describe('selected result utilities', () => {
       kind: 'node',
       id: 'person-1',
       type: 'person',
+      partition: { name: 'type', value: null },
       properties: { name: 'Ada Lovelace' }
     });
   });
@@ -62,7 +66,19 @@ describe('selected result utilities', () => {
       kind: 'node',
       id: 'person-1',
       type: 'person',
+      partition: undefined,
       properties: {}
+    });
+  });
+
+  it('preserves an explicitly missing partition value without inferring it', () => {
+    expect(getSelectedResultPayload({
+      id: 'person-1',
+      type: 'person',
+      partition: { name: 'type', value: null },
+      properties: {}
+    }, {})).toMatchObject({
+      partition: { name: 'type', value: null }
     });
   });
 });
