@@ -33,12 +33,12 @@ import CloseIcon from '@material-ui/icons/Close';
 import { JsonToTable } from 'react-json-to-table';
 import { ACTIONS } from '../../constants';
 import { executeQuery, executeTraversal } from '../../api/gremlinApi';
-import { onFetchQuery} from '../../logics/actionHelper';
-import { getQueryFailureFeedback, getQueryResultStatus } from '../../logics/queryFeedback';
+import { onFetchQuery, onGraphRequestFailure } from '../../logics/actionHelper';
+import { getQueryResultStatus } from '../../logics/queryFeedback';
 import { stringifyObjectValues} from '../../logics/utils';
 import { getSelectedResultPayload } from '../../logics/selectedResult';
 
-export const QueryHistoryList = ({ queries, onRunQuery, onLoadQuery, onClearHistory }) => {
+export const QueryHistoryList = ({ queries, disabled, onRunQuery, onLoadQuery, onClearHistory }) => {
   if (queries.length === 0) {
     return <p className="details__empty">No queries have been executed yet.</p>;
   }
@@ -53,7 +53,12 @@ export const QueryHistoryList = ({ queries, onRunQuery, onLoadQuery, onClearHist
               primaryTypographyProps={{ component: 'code' }}
             />
             <div className="query-history__actions">
-              <Button size="small" onClick={() => onRunQuery(value)} aria-label={`Run query ${index + 1}`}>
+              <Button
+                size="small"
+                disabled={disabled}
+                onClick={() => onRunQuery(value)}
+                aria-label={`Run query ${index + 1}`}
+              >
                 Run
               </Button>
               <Button size="small" onClick={() => onLoadQuery(value)} aria-label={`Load query ${index + 1}`}>
@@ -81,7 +86,8 @@ export const SelectedResultPanel = ({
   selectedResultViewMode,
   onViewModeChanged,
   onTraverse,
-  onCloseMobileInspector
+  onCloseMobileInspector,
+  disabled
 }) => {
   const hasSelected = selectedResult !== null;
   const selectedHeader = hasSelected ? selectedResult.kind[0].toUpperCase() + selectedResult.kind.slice(1) : null;
@@ -135,16 +141,31 @@ export const SelectedResultPanel = ({
       <Grid item xs={12} sm={12} md={12} className="selected-panel__actions">
         <Grid container spacing={2}>
           <Grid item xs={6} sm={6} md={6}>
-            <Fab variant="extended" size="small" onClick={() => onTraverse(selectedResult.id, 'out')}>
+            <Fab
+              variant="extended"
+              size="small"
+              disabled={disabled}
+              aria-label="Traverse out edges"
+              onClick={() => onTraverse(selectedResult.id, 'out')}
+            >
               Traverse Out Edges
               <ArrowForwardIcon/>
             </Fab>
           </Grid>
           <Grid item xs={6} sm={6} md={6}>
-            <Fab variant="extended" size="small" onClick={() => onTraverse(selectedResult.id, 'in')}>
+            <Fab
+              variant="extended"
+              size="small"
+              disabled={disabled}
+              aria-label="Traverse in edges"
+              onClick={() => onTraverse(selectedResult.id, 'in')}
+            >
               Traverse In Edges
               <ArrowBackIcon/>
             </Fab>
+            <p className="selected-panel__hint selected-panel__advisory">
+              Inbound traversals can fan out across Cosmos DB partitions.
+            </p>
           </Grid>
         </Grid>
       </Grid>
@@ -166,6 +187,16 @@ export const SelectedResultPanel = ({
                 <TableCell scope="row">ID</TableCell>
                 <TableCell align="left">{String(selectedResult.id)}</TableCell>
               </TableRow>
+              {selectedResult.kind === 'node' && selectedResult.partition &&
+              <TableRow key={'partition'}>
+                <TableCell scope="row">Partition key ({selectedResult.partition.name})</TableCell>
+                <TableCell align="left">
+                  {selectedResult.partition.value == null
+                    ? 'Partition key value not returned'
+                    : String(selectedResult.partition.value)}
+                </TableCell>
+              </TableRow>
+              }
             </TableBody>
           </Table>
           <JsonToTable json={selectedProperties}/>
@@ -204,10 +235,18 @@ export class Details extends React.Component {
 
   onTraverse(nodeId, direction) {
     const query = `g.V('${nodeId}').${direction}()`;
+    this.props.dispatch({
+      type: ACTIONS.SET_QUERY_STATUS,
+      payload: { status: 'running', message: `Traversing ${direction === 'in' ? 'inbound' : 'outbound'} edges...` }
+    });
     return executeTraversal({ nodeId, direction, nodeLimit: this.props.nodeLimit }).then((response) => {
-      onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch);
+      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch);
+      this.props.dispatch({
+        type: ACTIONS.SET_QUERY_STATUS,
+        payload: getQueryResultStatus(summary)
+      });
     }).catch((error) => {
-      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: COMMON_GREMLIN_ERROR });
+      onGraphRequestFailure(error, this.props.dispatch);
     });
   }
 
@@ -252,8 +291,7 @@ export class Details extends React.Component {
         payload: getQueryResultStatus(summary)
       });
     }).catch((error) => {
-      const feedback = getQueryFailureFeedback(error);
-      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: `${feedback.title}. ${feedback.message}` });
+      onGraphRequestFailure(error, this.props.dispatch);
     });
   }
 
@@ -291,6 +329,10 @@ export class Details extends React.Component {
 
   render(){
     const selectedResult = getSelectedResultPayload(this.props.selectedNode, this.props.selectedEdge);
+    const graphActionsDisabled = this.props.queryStatus === 'running'
+      || this.props.connectionLoading
+      || this.props.connectionSwitching
+      || this.props.connectionStatus !== 'connected';
 
     return (
       <div className={'details'}>
@@ -307,6 +349,7 @@ export class Details extends React.Component {
               <ExpansionPanelDetails>
                 <QueryHistoryList
                   queries={this.props.queryHistory}
+                  disabled={graphActionsDisabled}
                   onRunQuery={this.onRunQuery.bind(this)}
                   onLoadQuery={this.onLoadQuery.bind(this)}
                   onClearHistory={this.onClearHistory.bind(this)}
@@ -381,6 +424,7 @@ export class Details extends React.Component {
               onViewModeChanged={this.onSelectedResultViewModeChanged.bind(this)}
               onTraverse={this.onTraverse.bind(this)}
               onCloseMobileInspector={this.onCloseMobileInspector.bind(this)}
+              disabled={graphActionsDisabled}
             />
           </Grid>
         </Grid>
@@ -399,6 +443,10 @@ export const DetailsComponent = connect((state)=>{
     nodeLimit: state.options.nodeLimit,
     isPhysicsEnabled: state.options.isPhysicsEnabled,
     selectedResultViewMode: state.options.selectedResultViewMode,
-    networkOptions: state.options.networkOptions
+    networkOptions: state.options.networkOptions,
+    queryStatus: state.gremlin.queryStatus,
+    connectionStatus: state.connection.status,
+    connectionLoading: state.connection.loading,
+    connectionSwitching: state.connection.switching
   };
 })(Details);
