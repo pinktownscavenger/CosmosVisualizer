@@ -94,12 +94,24 @@ describe('header query controls', () => {
     }
   });
 
-  it('disables switching while a graph operation is running', () => {
+  it.each([
+    ['a graph operation is running', { queryStatus: 'running' }],
+    ['initial connection state is loading', { connectionLoading: true }],
+    ['a connection switch is active', { connectionSwitching: true }]
+  ])('disables switching while %s', (_label, props) => {
+    const html = ReactDOMServer.renderToStaticMarkup(<Header {...baseProps} {...props} />);
+    const switchButton = html.match(/<button[^>]*connection-control__switch[^>]*>/)[0];
+
+    expect(switchButton).toContain('disabled=""');
+  });
+
+  it('disables graph clearing while a graph operation is running', () => {
     const html = ReactDOMServer.renderToStaticMarkup(
       <Header {...baseProps} queryStatus="running" />
     );
+    const clearButton = html.match(/<button[^>]*query-button--clear[^>]*>/)[0];
 
-    expect(html).toMatch(/connection-control__switch[^>]*disabled=""|disabled=""[^>]*connection-control__switch/);
+    expect(clearButton).toContain('disabled=""');
   });
 
   it('clears graph and graph diagnostics after a successful connection switch without clearing query state', async () => {

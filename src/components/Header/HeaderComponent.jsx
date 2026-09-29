@@ -174,7 +174,7 @@ export class Header extends React.Component {
                 variant="outlined"
                 size="small"
                 className="connection-control__switch"
-                disabled={isExecuting}
+                disabled={isExecuting || this.props.connectionLoading || this.props.connectionSwitching}
                 onClick={() => this.setState({ connectionDialogOpen: true })}
               >
                 Switch
@@ -213,6 +213,7 @@ export class Header extends React.Component {
             variant="outlined"
             color="secondary"
             onClick={this.clearGraph.bind(this)}
+            disabled={isExecuting}
             className="query-button query-button--clear"
           >
             Clear Graph
