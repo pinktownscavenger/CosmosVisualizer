@@ -237,4 +237,21 @@ describe('connection concurrency and shutdown', () => {
     expect(candidate.close).toHaveBeenCalledOnce();
     expect(manager.getStatus()).toEqual({ status: 'disconnected' });
   });
+
+  it('does not probe a candidate created after shutdown begins', async () => {
+    const factory = deferred();
+    const candidate = makeClient(vi.fn().mockResolvedValue({ _items: [], attributes: new Map() }));
+    const manager = createConnectionManager({
+      clientFactory: vi.fn().mockReturnValue(factory.promise)
+    });
+    const switching = manager.switchConnection(cosmosConfig);
+
+    await manager.close();
+    factory.resolve(candidate);
+
+    await expect(switching).rejects.toMatchObject({ code: 'CONNECTION_PROBE_FAILED' });
+    expect(candidate.submit).not.toHaveBeenCalled();
+    expect(candidate.close).toHaveBeenCalledOnce();
+    expect(manager.getStatus()).toEqual({ status: 'disconnected' });
+  });
 });

@@ -79,6 +79,9 @@ function createConnectionManager({ clientFactory, initialClient = null, initialC
     let candidate = null;
     try {
       candidate = await clientFactory(config);
+      if (closed) {
+        throw managerError('NO_ACTIVE_CONNECTION', 'The connection manager is closed');
+      }
       const partitionKey = normalizePartitionKeyProperty(config.partitionKey);
       const probeResult = await candidate.submit(makeConnectionProbeQuery(partitionKey), {});
       const diagnostics = buildOperationDiagnostics('connection-probe', [
