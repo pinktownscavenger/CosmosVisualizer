@@ -13,10 +13,16 @@ export const getSelectedResultPayload = (selectedNode, selectedEdge) => {
     return null;
   }
 
-  return {
+  const payload = {
     kind,
     type: selection.type,
     id: selection.id,
     properties: selection.properties || {}
   };
+
+  if (kind === 'node') {
+    payload.partition = selection.partition;
+  }
+
+  return payload;
 };

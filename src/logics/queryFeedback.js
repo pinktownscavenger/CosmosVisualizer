@@ -13,6 +13,24 @@ export const isQueryTooLong = (query) => {
 };
 
 export const getQueryFailureFeedback = (error = {}) => {
+  if (error.code === 'OPERATION_IN_PROGRESS' || error.status === 409) {
+    return {
+      status: 'error',
+      title: 'Another Cosmos operation is running',
+      message: 'Wait for the active query or connection switch to finish, then retry.',
+      actionLabel: 'Wait and retry'
+    };
+  }
+
+  if (error.code === 'NO_ACTIVE_CONNECTION') {
+    return {
+      status: 'error',
+      title: 'Connect to Cosmos DB',
+      message: 'Choose a Cosmos DB connection before running this traversal.',
+      actionLabel: 'Switch connection'
+    };
+  }
+
   if (error.kind === QUERY_FAILURE_KINDS.VALIDATION || error.status === 400) {
     return {
       status: 'error',

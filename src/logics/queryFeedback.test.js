@@ -31,6 +31,20 @@ describe('query feedback', () => {
     });
   });
 
+  it('maps operation conflicts to wait-and-retry feedback', () => {
+    expect(getQueryFailureFeedback({ code: 'OPERATION_IN_PROGRESS', status: 409 })).toMatchObject({
+      title: 'Another Cosmos operation is running',
+      actionLabel: 'Wait and retry'
+    });
+  });
+
+  it('maps disconnected responses to connection feedback', () => {
+    expect(getQueryFailureFeedback({ code: 'NO_ACTIVE_CONNECTION', status: 503 })).toMatchObject({
+      title: 'Connect to Cosmos DB',
+      actionLabel: 'Switch connection'
+    });
+  });
+
   it('returns an empty state for successful queries with no graph data', () => {
     expect(getQueryResultStatus({ nodes: 0, edges: 0 })).toMatchObject({
       status: 'empty',
