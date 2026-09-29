@@ -51,7 +51,7 @@ describe('graph helper normalization', () => {
   });
 
   it('attaches adjacent edges to normalized vertices', () => {
-    expect(verticesToJson(rawVertices, rawEdges)).toEqual(normalizedGraph);
+    expect(verticesToJson(rawVertices, rawEdges, 'type')).toEqual(normalizedGraph);
   });
 
   it('adds scalar partition metadata while preserving the property array', () => {
@@ -79,6 +79,14 @@ describe('graph helper normalization', () => {
     ], [], 'type');
 
     expect(vertex.partition).toEqual({ name: 'type', value: null });
+  });
+
+  it('omits partition metadata when no partition property is configured', () => {
+    const [vertex] = verticesToJson([
+      { id: 'person-1', label: 'person', type: 'vertex', properties: {} }
+    ], []);
+
+    expect(vertex).not.toHaveProperty('partition');
   });
 
   it('returns an empty graph for empty vertex results', () => {

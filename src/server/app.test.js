@@ -10,6 +10,17 @@ const {
 } = require('./app');
 
 const makeClient = (submit) => ({ submit });
+const result = (items, charge) => ({
+  _items: items,
+  attributes: charge === undefined
+    ? new Map()
+    : new Map([['x-ms-total-request-charge', charge]])
+});
+const makeManager = (client, connection = { mode: 'fixture', partitionKey: 'type' }) => ({
+  getStatus: vi.fn().mockReturnValue({ status: 'connected', connection }),
+  runGraphOperation: vi.fn(callback => callback({ client, connection })),
+  switchConnection: vi.fn()
+});
 
 describe('server app', () => {
   it('returns health status', async () => {
@@ -33,36 +44,59 @@ describe('server app', () => {
 
   it('runs vertex and edge queries and returns normalized graph data', async () => {
     const submit = vi.fn()
-      .mockResolvedValueOnce({ _items: rawVertices })
-      .mockResolvedValueOnce({ _items: rawEdges });
-    const app = createApp({ client: makeClient(submit) });
+      .mockResolvedValueOnce(result(rawVertices, 31.4))
+      .mockResolvedValueOnce(result(rawEdges, 15.8));
+    const manager = makeManager(makeClient(submit));
+    const app = createApp({ connectionManager: manager });
 
     const response = await request(app)
       .post('/query')
       .send({ query: 'g.V()', nodeLimit: 4 })
       .expect(200);
 
-    expect(response.body).toEqual(normalizedGraph);
+    expect(response.body).toEqual({
+      data: normalizedGraph,
+      diagnostics: {
+        operation: 'query',
+        requestCharge: {
+          total: 47.2,
+          requests: [
+            { kind: 'vertices', charge: 31.4 },
+            { kind: 'edges', charge: 15.8 }
+          ]
+        }
+      }
+    });
+    expect(manager.runGraphOperation).toHaveBeenCalledOnce();
     expect(submit).toHaveBeenNthCalledWith(1, 'g.V().limit(4)', {});
     expect(submit.mock.calls[1][0]).toContain('.bothE()');
   });
 
   it('does not submit an edge query when no vertices are returned', async () => {
-    const submit = vi.fn().mockResolvedValueOnce({ _items: [] });
-    const app = createApp({ client: makeClient(submit) });
+    const submit = vi.fn().mockResolvedValueOnce(result([], 3.5));
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
 
     const response = await request(app)
       .post('/query')
       .send({ query: 'g.V()' })
       .expect(200);
 
-    expect(response.body).toEqual([]);
+    expect(response.body).toEqual({
+      data: [],
+      diagnostics: {
+        operation: 'query',
+        requestCharge: {
+          total: 3.5,
+          requests: [{ kind: 'vertices', charge: 3.5 }]
+        }
+      }
+    });
     expect(submit).toHaveBeenCalledTimes(1);
   });
 
   it('rejects missing, blank, and too-large queries', async () => {
     const submit = vi.fn();
-    const app = createApp({ client: makeClient(submit) });
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
     const tooLargeQuery = 'g'.repeat(MAX_QUERY_LENGTH + 1);
 
     await request(app).post('/query').send({}).expect(400);
@@ -74,7 +108,7 @@ describe('server app', () => {
 
   it('rejects JSON bodies over the configured parser limit', async () => {
     const submit = vi.fn();
-    const app = createApp({ client: makeClient(submit) });
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
 
     await request(app)
       .post('/query')
@@ -84,17 +118,30 @@ describe('server app', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('returns a server error when the Gremlin client fails', async () => {
+  it('returns safe query failure diagnostics from a failed vertex request', async () => {
     const error = new Error('database unavailable');
+    error.statusAttributes = new Map([['x-ms-total-request-charge', 3.1]]);
     const submit = vi.fn().mockRejectedValue(error);
-    const app = createApp({ client: makeClient(submit) });
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
     await request(app)
       .post('/query')
       .send({ query: 'g.V()' })
       .expect(500)
-      .expect({ error: 'Failed to fetch graph data' });
+      .expect({
+        error: {
+          code: 'COSMOS_QUERY_FAILED',
+          message: 'Failed to fetch graph data'
+        },
+        diagnostics: {
+          operation: 'query',
+          requestCharge: {
+            total: 3.1,
+            requests: [{ kind: 'vertices', charge: 3.1 }]
+          }
+        }
+      });
 
     expect(console.error).toHaveBeenCalledWith('Error fetching graph data:', error);
     console.error.mockRestore();
@@ -102,7 +149,7 @@ describe('server app', () => {
 
   it('rejects invalid traversal requests', async () => {
     const submit = vi.fn();
-    const app = createApp({ client: makeClient(submit) });
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
 
     await request(app).post('/traverse').send({ direction: 'out' }).expect(400);
     await request(app).post('/traverse').send({ nodeId: 'person-1', direction: 'sideways' }).expect(400);
@@ -114,17 +161,17 @@ describe('server app', () => {
     const vertices = [rawVertices[0], rawVertices[1], rawVertices[2]];
     const edges = [rawEdges[0], rawEdges[1], rawEdges[2]];
     const submit = vi.fn()
-      .mockResolvedValueOnce({ _items: vertices })
-      .mockResolvedValueOnce({ _items: edges });
-    const app = createApp({ client: makeClient(submit) });
+      .mockResolvedValueOnce(result(vertices, 6.25))
+      .mockResolvedValueOnce(result(edges, 2.5));
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
 
     const response = await request(app)
       .post('/traverse')
       .send({ nodeId: 'person-1', direction: 'out', nodeLimit: 2 })
       .expect(200);
 
-    expect(response.body.map(vertex => vertex.id)).toEqual(['person-1', 'company-1', 'project-1']);
-    expect(response.body.flatMap(vertex => vertex.edges).map(edge => edge.id)).toEqual([
+    expect(response.body.data.map(vertex => vertex.id)).toEqual(['person-1', 'company-1', 'project-1']);
+    expect(response.body.data.flatMap(vertex => vertex.edges).map(edge => edge.id)).toEqual([
       'edge-1',
       'edge-2',
       'edge-3',
@@ -132,6 +179,16 @@ describe('server app', () => {
       'edge-2',
       'edge-3'
     ]);
+    expect(response.body.diagnostics).toEqual({
+      operation: 'traverse-out',
+      requestCharge: {
+        total: 8.75,
+        requests: [
+          { kind: 'vertices', charge: 6.25 },
+          { kind: 'edges', charge: 2.5 }
+        ]
+      }
+    });
     expect(submit.mock.calls[0][0]).toContain("g.V('person-1').union(identity(), out().limit(2)).dedup()");
     expect(submit.mock.calls[1][0]).toContain("g.V('person-1').outE()");
     expect(submit.mock.calls[1][0]).toContain("where(inV().hasId('company-1','project-1'))");
@@ -141,25 +198,83 @@ describe('server app', () => {
     const vertices = [rawVertices[2], rawVertices[0]];
     const edges = [rawEdges[1], rawEdges[2]];
     const submit = vi.fn()
-      .mockResolvedValueOnce({ _items: vertices })
-      .mockResolvedValueOnce({ _items: edges });
-    const app = createApp({ client: makeClient(submit) });
+      .mockResolvedValueOnce(result(vertices, 5))
+      .mockResolvedValueOnce(result(edges, 1));
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
 
     const response = await request(app)
       .post('/traverse')
       .send({ nodeId: 'project-1', direction: 'in', nodeLimit: 5 })
       .expect(200);
 
-    expect(response.body.map(vertex => vertex.id)).toEqual(['project-1', 'person-1']);
-    expect(response.body.flatMap(vertex => vertex.edges).map(edge => edge.id)).toEqual([
+    expect(response.body.data.map(vertex => vertex.id)).toEqual(['project-1', 'person-1']);
+    expect(response.body.data.flatMap(vertex => vertex.edges).map(edge => edge.id)).toEqual([
       'edge-2',
       'edge-3',
       'edge-2',
       'edge-3'
     ]);
+    expect(response.body.diagnostics.operation).toBe('traverse-in');
     expect(submit.mock.calls[0][0]).toContain("g.V('project-1').union(identity(), in().limit(5)).dedup()");
     expect(submit.mock.calls[1][0]).toContain("g.V('project-1').inE()");
     expect(submit.mock.calls[1][0]).toContain("where(outV().hasId('person-1'))");
+  });
+
+  it('preserves completed vertex and failed edge charges in an error response', async () => {
+    const edgeError = new Error('raw edge failure detail');
+    edgeError.statusAttributes = {
+      'x-ms-total-request-charge': 1.1
+    };
+    const submit = vi.fn()
+      .mockResolvedValueOnce(result(rawVertices, 4.4))
+      .mockRejectedValueOnce(edgeError);
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await request(app)
+      .post('/query')
+      .send({ query: 'g.V()' })
+      .expect(500);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'COSMOS_QUERY_FAILED',
+        message: 'Failed to fetch graph data'
+      },
+      diagnostics: {
+        operation: 'query',
+        requestCharge: {
+          total: 5.5,
+          requests: [
+            { kind: 'vertices', charge: 4.4 },
+            { kind: 'edges', charge: 1.1 }
+          ]
+        }
+      }
+    });
+    expect(JSON.stringify(response.body)).not.toContain('raw edge failure detail');
+    expect(consoleError).toHaveBeenCalledWith('Error fetching graph data:', edgeError);
+    consoleError.mockRestore();
+  });
+
+  it.each([
+    ['NO_ACTIVE_CONNECTION', 503, 'NO_ACTIVE_CONNECTION', 'Connect to Cosmos DB before running a graph operation'],
+    ['CONNECTION_SWITCH_ACTIVE', 409, 'OPERATION_IN_PROGRESS', 'Wait for the connection switch to finish'],
+    ['GRAPH_OPERATION_ACTIVE', 409, 'OPERATION_IN_PROGRESS', 'Wait for the active graph operation to finish']
+  ])('maps manager state %s to a stable HTTP error', async (managerCode, status, code, message) => {
+    const managerError = new Error('internal manager detail');
+    managerError.code = managerCode;
+    const connectionManager = {
+      getStatus: vi.fn(),
+      runGraphOperation: vi.fn().mockRejectedValue(managerError),
+      switchConnection: vi.fn()
+    };
+
+    await request(createApp({ connectionManager }))
+      .post('/query')
+      .send({ query: 'g.V()' })
+      .expect(status)
+      .expect({ error: { code, message } });
   });
 });
 

@@ -9,6 +9,7 @@ const {
   stringifyGremlinId,
   verticesToJson
 } = require('./graphHelpers');
+const { buildOperationDiagnostics } = require('./queryDiagnostics');
 
 const MAX_QUERY_LENGTH = 10000;
 const CONNECTION_FIELD_LIMITS = {
@@ -77,7 +78,52 @@ function sendError(res, status, code, message, diagnostics) {
   res.status(status).send(body);
 }
 
-function createApp({ client, connectionManager, allowedOrigin = 'http://localhost:5173' }) {
+async function submitTracked(client, kind, query, requests) {
+  try {
+    const result = await client.submit(query, {});
+    requests.push({ kind, source: result });
+    return result;
+  } catch (error) {
+    requests.push({ kind, source: error });
+    throw error;
+  }
+}
+
+function sendManagerStateError(res, error) {
+  if (error && error.code === 'NO_ACTIVE_CONNECTION') {
+    sendError(
+      res,
+      503,
+      'NO_ACTIVE_CONNECTION',
+      'Connect to Cosmos DB before running a graph operation'
+    );
+    return true;
+  }
+
+  if (error && error.code === 'CONNECTION_SWITCH_ACTIVE') {
+    sendError(
+      res,
+      409,
+      'OPERATION_IN_PROGRESS',
+      'Wait for the connection switch to finish'
+    );
+    return true;
+  }
+
+  if (error && error.code === 'GRAPH_OPERATION_ACTIVE') {
+    sendError(
+      res,
+      409,
+      'OPERATION_IN_PROGRESS',
+      'Wait for the active graph operation to finish'
+    );
+    return true;
+  }
+
+  return false;
+}
+
+function createApp({ connectionManager, allowedOrigin = 'http://localhost:5173' }) {
   const app = express();
 
   app.use(cors({
@@ -140,20 +186,45 @@ function createApp({ client, connectionManager, allowedOrigin = 'http://localhos
     const query = req.body.query;
 
     if (!isValidQuery(query)) {
-      res.status(400).send({ error: 'A Gremlin query is required' });
+      sendError(res, 400, 'QUERY_INPUT_INVALID', 'A Gremlin query is required');
       return;
     }
 
+    const operation = 'query';
+    const requests = [];
     try {
-      const vertexResult = await client.submit(makeVertexQuery(query, nodeLimit), {});
-      const vertices = vertexResult._items || [];
-      const edgeQuery = makeEdgeQuery(vertices.map(vertex => vertex.id));
-      const edgeResult = edgeQuery ? await client.submit(edgeQuery, {}) : { _items: [] };
+      const data = await connectionManager.runGraphOperation(async ({ client, connection }) => {
+        const vertexResult = await submitTracked(
+          client,
+          'vertices',
+          makeVertexQuery(query, nodeLimit),
+          requests
+        );
+        const vertices = vertexResult._items || [];
+        const edgeQuery = makeEdgeQuery(vertices.map(vertex => vertex.id));
+        const edgeResult = edgeQuery
+          ? await submitTracked(client, 'edges', edgeQuery, requests)
+          : { _items: [] };
 
-      res.send(verticesToJson(vertices, edgeResult._items || []));
+        return verticesToJson(vertices, edgeResult._items || [], connection.partitionKey);
+      });
+
+      res.send({
+        data,
+        diagnostics: buildOperationDiagnostics(operation, requests)
+      });
     } catch (error) {
+      if (sendManagerStateError(res, error)) {
+        return;
+      }
       console.error('Error fetching graph data:', error);
-      res.status(500).send({ error: 'Failed to fetch graph data' });
+      sendError(
+        res,
+        500,
+        'COSMOS_QUERY_FAILED',
+        'Failed to fetch graph data',
+        buildOperationDiagnostics(operation, requests)
+      );
     }
   });
 
@@ -163,24 +234,62 @@ function createApp({ client, connectionManager, allowedOrigin = 'http://localhos
     const nodeLimit = req.body.nodeLimit;
 
     if (!isValidTraversalRequest({ nodeId, direction })) {
-      res.status(400).send({ error: 'A node id and traversal direction are required' });
+      sendError(
+        res,
+        400,
+        'TRAVERSAL_INPUT_INVALID',
+        'A node id and traversal direction are required'
+      );
       return;
     }
 
+    const operation = `traverse-${direction}`;
+    const requests = [];
     try {
-      const vertexResult = await client.submit(makeTraversalVertexQuery(nodeId, direction, nodeLimit), {});
-      const vertices = vertexResult._items || [];
-      const neighborIds = vertices
-        .map(vertex => stringifyGremlinId(vertex.id))
-        .filter(vertexId => vertexId !== nodeId);
-      const edgeQuery = makeTraversalEdgeQuery(nodeId, direction, neighborIds);
-      const edgeResult = edgeQuery ? await client.submit(edgeQuery, {}) : { _items: [] };
+      const data = await connectionManager.runGraphOperation(async ({ client, connection }) => {
+        const vertexResult = await submitTracked(
+          client,
+          'vertices',
+          makeTraversalVertexQuery(nodeId, direction, nodeLimit),
+          requests
+        );
+        const vertices = vertexResult._items || [];
+        const neighborIds = vertices
+          .map(vertex => stringifyGremlinId(vertex.id))
+          .filter(vertexId => vertexId !== nodeId);
+        const edgeQuery = makeTraversalEdgeQuery(nodeId, direction, neighborIds);
+        const edgeResult = edgeQuery
+          ? await submitTracked(client, 'edges', edgeQuery, requests)
+          : { _items: [] };
 
-      res.send(verticesToJson(vertices, edgeResult._items || []));
+        return verticesToJson(vertices, edgeResult._items || [], connection.partitionKey);
+      });
+
+      res.send({
+        data,
+        diagnostics: buildOperationDiagnostics(operation, requests)
+      });
     } catch (error) {
+      if (sendManagerStateError(res, error)) {
+        return;
+      }
       console.error('Error fetching traversal data:', error);
-      res.status(500).send({ error: 'Failed to fetch traversal data' });
+      sendError(
+        res,
+        500,
+        'COSMOS_TRAVERSAL_FAILED',
+        'Failed to fetch traversal data',
+        buildOperationDiagnostics(operation, requests)
+      );
     }
+  });
+
+  app.use((error, req, res, next) => {
+    if (error && error.type === 'entity.too.large') {
+      sendError(res, 413, 'PAYLOAD_TOO_LARGE', 'Request body is too large');
+      return;
+    }
+    next(error);
   });
 
   return app;
