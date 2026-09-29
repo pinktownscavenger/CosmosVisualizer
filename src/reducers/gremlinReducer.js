@@ -4,7 +4,8 @@ const initialState = {
   query: '',
   error: null,
   queryStatus: 'idle',
-  queryStatusMessage: 'Ready to explore the graph.'
+  queryStatusMessage: 'Ready to explore the graph.',
+  latestDiagnostics: null
 };
 
 export const reducer =  (state=initialState, action)=>{
@@ -29,6 +30,12 @@ export const reducer =  (state=initialState, action)=>{
         queryStatus: status,
         queryStatusMessage: payload.message || ''
       }
+    }
+    case ACTIONS.SET_OPERATION_DIAGNOSTICS: {
+      return { ...state, latestDiagnostics: action.payload || null };
+    }
+    case ACTIONS.CLEAR_OPERATION_DIAGNOSTICS: {
+      return { ...state, latestDiagnostics: null };
     }
     default:
       return state;

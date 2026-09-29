@@ -3,6 +3,22 @@ import { ACTIONS } from '../constants';
 import { reducer } from './gremlinReducer';
 
 describe('gremlin reducer', () => {
+  it('stores and clears operation diagnostics independently', () => {
+    const diagnostics = { operation: 'query', requestCharge: { total: 4.2, requests: [] } };
+    const withDiagnostics = reducer(undefined, {
+      type: ACTIONS.SET_OPERATION_DIAGNOSTICS,
+      payload: diagnostics
+    });
+
+    expect(withDiagnostics.latestDiagnostics).toEqual(diagnostics);
+    expect(reducer(withDiagnostics, {
+      type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS
+    })).toMatchObject({
+      query: '',
+      latestDiagnostics: null
+    });
+  });
+
   it('tracks query execution status and clears stale errors when a run starts', () => {
     const errorState = reducer(undefined, {
       type: ACTIONS.SET_ERROR,
