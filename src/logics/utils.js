@@ -59,7 +59,14 @@ export const extractEdgesAndNodes = (nodeList, nodeLabels=[]) => {
     }
     const labelField = nodeLabelMap[type];
     const label = labelField in node.properties ? node.properties[labelField] : type;
-    nodes.push({ id: node.id, label: String(label), group: node.label, properties: node.properties, type });
+    nodes.push({
+      id: node.id,
+      label: String(label),
+      group: node.label,
+      properties: node.properties,
+      partition: node.partition,
+      type
+    });
 
     edges = edges.concat((node.edges || []).map(edge => ({ ...edge, type: edge.label, arrows: { to: { enabled: true, scaleFactor: 0.5 } } })));
   });

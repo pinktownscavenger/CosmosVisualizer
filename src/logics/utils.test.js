@@ -17,6 +17,7 @@ describe('frontend graph utilities', () => {
         label: 'Ada Lovelace',
         group: 'person',
         type: 'person',
+        partition: { name: 'type', value: 'person' },
         properties: normalizedGraph[0].properties
       },
       {
@@ -24,6 +25,7 @@ describe('frontend graph utilities', () => {
         label: 'Analytical Engines Ltd',
         group: 'company',
         type: 'company',
+        partition: { name: 'type', value: 'company' },
         properties: normalizedGraph[1].properties
       },
       {
@@ -31,6 +33,7 @@ describe('frontend graph utilities', () => {
         label: 'Graph Modernization',
         group: 'project',
         type: 'project',
+        partition: { name: 'type', value: 'project' },
         properties: normalizedGraph[2].properties
       },
       {
@@ -38,6 +41,7 @@ describe('frontend graph utilities', () => {
         label: 'tag',
         group: 'tag',
         type: 'tag',
+        partition: { name: 'type', value: 'tag' },
         properties: normalizedGraph[3].properties
       }
     ]);
@@ -51,7 +55,7 @@ describe('frontend graph utilities', () => {
       { type: 'person', field: 'name' },
       { type: 'company', field: 'name' },
       { type: 'project', field: 'title' },
-      { type: 'tag', field: undefined }
+      { type: 'tag', field: 'type' }
     ]);
   });
 
@@ -71,6 +75,22 @@ describe('frontend graph utilities', () => {
 
     expect(result.edges).toEqual([]);
     expect(result.nodes).toHaveLength(1);
+  });
+
+  it('preserves dedicated partition metadata on graph nodes', () => {
+    const partition = { name: 'type', value: 'person' };
+    const result = extractEdgesAndNodes([
+      {
+        id: 'person-1',
+        label: 'person',
+        properties: { name: ['Ada Lovelace'] },
+        partition,
+        edges: []
+      }
+    ], []);
+
+    expect(result.nodes[0].partition).toEqual(partition);
+    expect(result.nodes[0].properties).not.toHaveProperty('partition');
   });
 
   it('diffs nodes by id', () => {

@@ -6,6 +6,15 @@ function mapPropertiesToObj(properties) {
   return obj;
 }
 
+function normalizePartitionKeyProperty(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim().replace(/^\//, '');
+  return normalized || null;
+}
+
 function stringifyGremlinId(id) {
   return typeof id === 'string' ? id : JSON.stringify(id);
 }
@@ -50,19 +59,33 @@ function uniqueEdges(edges) {
   });
 }
 
-function verticesToJson(vertices, edges) {
+function verticesToJson(vertices, edges, partitionKey = 'type') {
   const edgeMap = buildEdgeMap(edges);
+  const partitionName = normalizePartitionKeyProperty(partitionKey);
 
   return vertices.map(vertex => {
     const connectedEdges = uniqueEdges(edgeMap[vertex.id] || []);
+    const properties = mapPropertiesToObj(vertex.properties);
 
-    return {
+    const normalizedVertex = {
       id: vertex.id,
       label: vertex.label,
       type: vertex.type,
-      properties: mapPropertiesToObj(vertex.properties),
+      properties,
       edges: connectedEdges
     };
+
+    if (partitionName) {
+      const partitionValues = properties[partitionName];
+      normalizedVertex.partition = {
+        name: partitionName,
+        value: Array.isArray(partitionValues) && partitionValues.length > 0
+          ? partitionValues[0]
+          : null
+      };
+    }
+
+    return normalizedVertex;
   });
 }
 
@@ -142,6 +165,7 @@ module.exports = {
   makeTraversalVertexQuery,
   makeVertexQuery,
   mapPropertiesToObj,
+  normalizePartitionKeyProperty,
   normalizeEdge,
   stringifyGremlinId,
   uniqueEdges,
