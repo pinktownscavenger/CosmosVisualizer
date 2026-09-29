@@ -1,45 +1,136 @@
-const gremlin = require('gremlin');
-const { createApp } = require('./src/server/app');
-const { createFixtureClient } = require('./src/server/fixtureClient');
-const port = Number(process.env.PORT || 3001);
-const useFixtureData = process.env.USE_FIXTURE_DATA === 'true';
+const { createApp: defaultCreateApp } = require('./src/server/app');
+const { createConnectionManager: defaultCreateConnectionManager } = require('./src/server/connectionManager');
+const { createFixtureClient: defaultCreateFixtureClient } = require('./src/server/fixtureClient');
+const { createGremlinClient: defaultCreateGremlinClient } = require('./src/server/gremlinClientFactory');
 
-const endpoint = process.env.COSMOS_ENDPOINT;
-const primaryKey = process.env.COSMOS_PRIMARY_KEY;
-const database = process.env.COSMOS_DATABASE;
-const container = process.env.COSMOS_CONTAINER;
-const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const COSMOS_CONFIG_KEYS = [
+  'COSMOS_ENDPOINT',
+  'COSMOS_PRIMARY_KEY',
+  'COSMOS_DATABASE',
+  'COSMOS_CONTAINER',
+  'COSMOS_PARTITION_KEY'
+];
 
-const requiredConfig = {
-  COSMOS_ENDPOINT: endpoint,
-  COSMOS_PRIMARY_KEY: primaryKey,
-  COSMOS_DATABASE: database,
-  COSMOS_CONTAINER: container
-};
+const hasCompleteCosmosConfig = (env) => COSMOS_CONFIG_KEYS.every((key) => (
+  typeof env[key] === 'string' && env[key].trim().length > 0
+));
 
-const missingConfig = Object.entries(requiredConfig)
-  .filter(([, value]) => !value)
-  .map(([key]) => key);
+function createServerRuntime(env = process.env, dependencies = {}) {
+  const createApp = dependencies.createApp || defaultCreateApp;
+  const createConnectionManager = dependencies.createConnectionManager || defaultCreateConnectionManager;
+  const createFixtureClient = dependencies.createFixtureClient || defaultCreateFixtureClient;
+  const createGremlinClient = dependencies.createGremlinClient || defaultCreateGremlinClient;
+  const signalSource = dependencies.signalSource || process;
+  const logger = dependencies.logger || console;
 
-if (!useFixtureData && missingConfig.length > 0) {
-  throw new Error(`Missing required environment variables: ${missingConfig.join(', ')}`);
-}
+  const port = Number(env.PORT || 3001);
+  const allowedOrigin = env.CORS_ORIGIN || 'http://localhost:5173';
+  const useFixtureData = env.USE_FIXTURE_DATA === 'true';
+  const completeCosmosConfig = hasCompleteCosmosConfig(env);
 
-const client = useFixtureData
-  ? createFixtureClient()
-  : new gremlin.driver.Client(endpoint, {
-    authenticator: new gremlin.driver.auth.PlainTextSaslAuthenticator(
-      `/dbs/${database}/colls/${container}`,
-      primaryKey
-    ),
-    traversalSource: 'g',
-    mimeType: 'application/vnd.gremlin-v2.0+json',
-    rejectUnauthorized: true
+  let initialClient = null;
+  let initialConnection = null;
+  let mode = 'disconnected';
+
+  if (useFixtureData) {
+    initialClient = createFixtureClient();
+    initialConnection = { mode: 'fixture', partitionKey: 'type' };
+    mode = 'fixture data';
+  } else if (completeCosmosConfig) {
+    const config = {
+      endpoint: env.COSMOS_ENDPOINT.trim(),
+      primaryKey: env.COSMOS_PRIMARY_KEY.trim(),
+      database: env.COSMOS_DATABASE.trim(),
+      container: env.COSMOS_CONTAINER.trim(),
+      partitionKey: env.COSMOS_PARTITION_KEY.trim()
+    };
+    initialClient = createGremlinClient(config);
+    initialConnection = {
+      mode: 'cosmos',
+      endpoint: config.endpoint,
+      database: config.database,
+      container: config.container,
+      partitionKey: config.partitionKey
+    };
+    mode = 'Cosmos DB';
+  }
+
+  const connectionManager = createConnectionManager({
+    clientFactory: createGremlinClient,
+    initialClient,
+    initialConnection
+  });
+  const app = createApp({ connectionManager, allowedOrigin });
+  let httpServer = null;
+  let shutdownPromise = null;
+  let handlersRegistered = false;
+
+  function handleSignal() {
+    shutdown().catch((error) => {
+      logger.error('Failed to shut down the Cosmos proxy cleanly:', error);
+    });
+  }
+
+  const removeSignalHandlers = () => {
+    if (!handlersRegistered || typeof signalSource.removeListener !== 'function') {
+      return;
+    }
+    signalSource.removeListener('SIGINT', handleSignal);
+    signalSource.removeListener('SIGTERM', handleSignal);
+    handlersRegistered = false;
+  };
+
+  const closeHttpServer = () => new Promise((resolve, reject) => {
+    if (!httpServer || typeof httpServer.close !== 'function') {
+      resolve();
+      return;
+    }
+    httpServer.close((error) => error ? reject(error) : resolve());
   });
 
-const app = createApp({ client, allowedOrigin });
+  const shutdown = () => {
+    if (!shutdownPromise) {
+      shutdownPromise = (async () => {
+        removeSignalHandlers();
+        try {
+          await connectionManager.close();
+        } finally {
+          await closeHttpServer();
+        }
+      })();
+    }
+    return shutdownPromise;
+  };
 
-app.listen(port, () => {
-  const mode = useFixtureData ? 'fixture data' : 'Cosmos DB';
-  console.log(`Simple gremlin-proxy server listening on port ${port} using ${mode}!`);
-});
+  const start = () => {
+    if (httpServer) {
+      return httpServer;
+    }
+    httpServer = app.listen(port, () => {
+      if (!handlersRegistered && typeof signalSource.once === 'function') {
+        signalSource.once('SIGINT', handleSignal);
+        signalSource.once('SIGTERM', handleSignal);
+        handlersRegistered = true;
+      }
+      logger.log(`CosmosVisualizer proxy listening on port ${port} using ${mode}`);
+    });
+    return httpServer;
+  };
+
+  return {
+    app,
+    connectionManager,
+    shutdown,
+    start
+  };
+}
+
+if (require.main === module) {
+  createServerRuntime().start();
+}
+
+module.exports = {
+  COSMOS_CONFIG_KEYS,
+  createServerRuntime,
+  hasCompleteCosmosConfig
+};

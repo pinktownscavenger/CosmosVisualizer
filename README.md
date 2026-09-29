@@ -8,7 +8,7 @@ This project is a modernized fork of [prabushitha/gremlin-visualizer](https://gi
 
 ![CosmosVisualizer dashboard](.github/assets/cosmos-visualizer-overview.png)
 
-CosmosVisualizer is a local React workspace for exploring Azure Cosmos DB Gremlin API graphs. It starts with a credential-free demo graph, lets you run Gremlin vertex queries through a local proxy, renders the returned graph with `vis-network`, and gives you a focused side panel for labels, limits, physics, history, and selected graph details.
+CosmosVisualizer is a local React workspace for exploring Azure Cosmos DB Gremlin API graphs. It starts with a credential-free demo graph, lets you run Gremlin vertex queries through a local proxy, renders the returned graph with `vis-network`, and surfaces Cosmos-specific request-unit (RU), partition, and connection context while you explore.
 
 ## Demo
 
@@ -75,6 +75,7 @@ COSMOS_ENDPOINT=wss://your-account.gremlin.cosmos.azure.com:443/
 COSMOS_PRIMARY_KEY=your-cosmos-primary-key
 COSMOS_DATABASE=your-database
 COSMOS_CONTAINER=your-graph-container
+COSMOS_PARTITION_KEY=type
 ```
 
 Optional variables:
@@ -93,13 +94,19 @@ Start the app:
 npm start
 ```
 
-The Vite dev server runs on port `5173`; the API proxy defaults to port `3001`.
+The Vite dev server runs on port `5173`; the API proxy defaults to port `3001`. All five Cosmos variables are required for an automatic startup connection. If one is missing, the server starts safely in disconnected mode and the browser can establish a connection with the **Switch** action.
+
+The partition-key setting accepts a property name such as `type` or `/type`. It is used for partition display, probe construction, and best-effort fan-out advisories; CosmosVisualizer does not infer it from the graph schema.
 
 ## Features
 
 - Credential-free startup with a seeded demo graph.
 - Fixture mode for pulling a sample graph with `g.V().limit(25)`.
 - Cosmos-native query proxy that keeps database credentials server-side.
+- In-app connection switching without restarting the local proxy.
+- Per-operation RU totals with vertex/edge request breakdowns when Cosmos returns charge metadata.
+- Vertex partition-key metadata in table and JSON inspectors.
+- Advisory warnings for query patterns and inbound traversals that may fan out across partitions.
 - Dark graph workspace with node and edge counters.
 - Interactive `vis-network` graph rendering with directed edge labels.
 - Query history, graph clearing, physics toggling, and node-limit controls.
@@ -113,7 +120,11 @@ The project has two local runtime processes:
 - A Vite React frontend on port `5173`.
 - A Node/Express proxy on port `3001`.
 
-The browser posts `{ query, nodeLimit }` to `/query`. The proxy keeps Cosmos DB credentials server-side, submits the vertex query through the Gremlin driver, fetches adjacent edges for the returned vertices, normalizes the graph payload, and returns it to the UI. In fixture mode, the proxy swaps the real Gremlin client for a static in-memory client while the frontend also starts with a presentational demo graph.
+The browser posts `{ query, nodeLimit }` to `/query`. The proxy submits the vertex query through the Gremlin driver, fetches adjacent edges for the returned vertices, normalizes the graph payload, and returns an envelope with graph data plus available RU diagnostics. `/traverse` uses the same contract for selected-node traversal. `/connection` reports sanitized status and probes candidate connections before atomically replacing the process-wide active client.
+
+One graph operation can make separate vertex and edge requests. CosmosVisualizer sums both charges for the displayed operation total and keeps the breakdown visible; missing provider metadata is reported as unavailable rather than zero. A successful connection switch clears graph data, selection, and the prior operation charge while preserving query text and history. A failed probe leaves the existing connection and graph untouched.
+
+In fixture mode, the proxy uses a deterministic in-memory client with stable request charges and `type` partition values. It exercises the same manager, query, traversal, and diagnostics paths without Azure credentials.
 
 ## Query Behavior
 
@@ -123,7 +134,15 @@ Submit Gremlin queries that return vertices, for example:
 g.V().limit(25)
 ```
 
-The server applies the configured node limit to the vertex query, then fetches edges adjacent to the returned vertices and sends a normalized graph payload to the frontend.
+The server applies the configured node limit to the vertex query, then fetches edges adjacent to the returned vertices and sends a normalized graph payload to the frontend. Queries beginning with broad `g.V()` scans, ID lookups without recognized partition scope, and inbound/bidirectional traversal steps can produce informational fan-out advisories. These warnings never rewrite or block a query.
+
+Normalized vertices retain their ordinary properties and also expose dedicated partition metadata. If Cosmos does not return the configured property for a vertex, the inspector says `Partition key value not returned` instead of guessing.
+
+## Connection Switching And Credentials
+
+The compact header status shows `Fixture`, `Disconnected`, or the active Cosmos endpoint host, database, and container. Select **Switch** to enter an endpoint, primary key, database, container, and partition-key property. The server validates and probes the candidate before activating it.
+
+Connection details entered in the UI are held only in memory for this local, single-user process. The primary key is sent once to the local proxy, is never placed in Redux, diagnostics, history, response payloads, or browser persistence, and is cleared from the modal after submission or dismissal. The active Gremlin driver necessarily retains authentication material in server process memory until that connection is replaced or the server stops.
 
 ## Useful Scripts
 
@@ -171,7 +190,7 @@ docker run --rm \
 
 Do not commit `.env` files or Cosmos DB keys. If a key was ever committed or shared, rotate it in Azure before publishing the repository.
 
-The proxy validates query presence and length, but it intentionally forwards user-provided Gremlin query text to the configured database. Run it only in trusted local or controlled environments unless stronger query authorization, auditing, and network controls are added.
+The proxy validates query presence and length, but it intentionally forwards user-provided Gremlin query text to the configured database. The in-app connection API is also intentionally unauthenticated for local single-user operation. Run it only in trusted local or controlled environments unless stronger query authorization, authentication, auditing, and network controls are added.
 
 ## Release Checks
 
@@ -182,11 +201,14 @@ npm test
 npm run build
 node --check proxy-server.js
 node --check src/server/app.js
+node --check src/server/connectionManager.js
+node --check src/server/gremlinClientFactory.js
 node --check src/server/graphHelpers.js
+node --check src/server/queryDiagnostics.js
 npm audit --omit=dev
 ```
 
-Then run `npm run start:fixture` and smoke test query execution, graph rendering, item selection, query history, clear graph, and traversal buttons in the browser.
+Then run `npm run start:fixture` and smoke test the Fixture status, deterministic RU totals, query advisories, partition values, graph rendering, item selection, query history, graph clearing, connection modal key clearing, and inbound/outbound traversal diagnostics in the browser.
 
 ## License
 

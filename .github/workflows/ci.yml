@@ -34,4 +34,7 @@ jobs:
         run: |
           node --check proxy-server.js
           node --check src/server/app.js
+          node --check src/server/connectionManager.js
+          node --check src/server/gremlinClientFactory.js
           node --check src/server/graphHelpers.js
+          node --check src/server/queryDiagnostics.js
