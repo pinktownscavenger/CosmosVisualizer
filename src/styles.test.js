@@ -38,8 +38,16 @@ describe('layout stylesheet contracts', () => {
 
   it('keeps compact action targets large enough for touch and pointer use', () => {
     expect(declarationsFor('.query-status__demo.MuiButton-root')).toContain('min-height: 36px');
+    expect(declarationsFor('.connection-control__switch.MuiButton-root')).toContain('min-height: 36px');
     expect(declarationsFor('.graph-hint .MuiIconButton-root')).toContain('width: 36px');
     expect(declarationsFor('.graph-hint .MuiIconButton-root')).toContain('height: 36px');
+  });
+
+  it('styles compact connection, RU, advisory, and modal surfaces', () => {
+    expect(stylesheet).toContain('.connection-control');
+    expect(stylesheet).toContain('.operation-diagnostics');
+    expect(stylesheet).toContain('.query-advisories');
+    expect(stylesheet).toContain('.connection-dialog__fields');
   });
 
   it('defines a mobile selected-result sheet treatment', () => {
