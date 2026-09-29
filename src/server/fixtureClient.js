@@ -149,21 +149,40 @@ function getTraversalEdges(query) {
 }
 
 function createFixtureClient() {
+  let closed = false;
+
+  const response = (items, charge) => ({
+    _items: items,
+    attributes: new Map([['x-ms-total-request-charge', charge]])
+  });
+
   return {
     submit(query) {
+      if (closed) {
+        return Promise.reject(new Error('Fixture client is closed'));
+      }
+
+      if (query === "g.V().has('type').limit(1)") {
+        return Promise.resolve(response(rawVertices.slice(0, 1), 0.5));
+      }
+
       if (query.includes('.inE()') || query.includes('.outE()')) {
-        return Promise.resolve({ _items: getTraversalEdges(query) });
+        return Promise.resolve(response(getTraversalEdges(query), 1.25));
       }
 
       if (query.includes('.bothE()')) {
-        return Promise.resolve({ _items: rawEdges });
+        return Promise.resolve(response(rawEdges, 1.25));
       }
 
       if (query.includes('union(identity(),')) {
-        return Promise.resolve({ _items: getTraversalVertices(query) });
+        return Promise.resolve(response(getTraversalVertices(query), 2.5));
       }
 
-      return Promise.resolve({ _items: rawVertices });
+      return Promise.resolve(response(rawVertices, 2.5));
+    },
+    close() {
+      closed = true;
+      return Promise.resolve();
     }
   };
 }
