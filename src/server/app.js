@@ -5,11 +5,19 @@ const {
   makeTraversalEdgeQuery,
   makeTraversalVertexQuery,
   makeVertexQuery,
+  normalizePartitionKeyProperty,
   stringifyGremlinId,
   verticesToJson
 } = require('./graphHelpers');
 
 const MAX_QUERY_LENGTH = 10000;
+const CONNECTION_FIELD_LIMITS = {
+  endpoint: 2048,
+  primaryKey: 4096,
+  database: 255,
+  container: 255,
+  partitionKey: 255
+};
 
 function isValidQuery(query) {
   return typeof query === 'string' && query.trim().length > 0 && query.length <= MAX_QUERY_LENGTH;
@@ -21,7 +29,55 @@ function isValidTraversalRequest({ nodeId, direction }) {
     && (direction === 'out' || direction === 'in');
 }
 
-function createApp({ client, allowedOrigin = 'http://localhost:5173' }) {
+function validateConnectionInput(body) {
+  const input = body && typeof body === 'object' ? body : {};
+  const normalized = {};
+
+  for (const [field, limit] of Object.entries(CONNECTION_FIELD_LIMITS)) {
+    const value = input[field];
+    if (typeof value !== 'string' || value.trim().length === 0 || value.length > limit) {
+      return { ok: false, message: 'Connection details are invalid' };
+    }
+    normalized[field] = value.trim();
+  }
+
+  let endpoint;
+  try {
+    endpoint = new URL(normalized.endpoint);
+  } catch (_) {
+    return { ok: false, message: 'Connection details are invalid' };
+  }
+
+  if (
+    endpoint.protocol !== 'wss:'
+    || endpoint.username
+    || endpoint.password
+    || endpoint.search
+    || endpoint.hash
+  ) {
+    return { ok: false, message: 'Connection details are invalid' };
+  }
+
+  const partitionKey = normalizePartitionKeyProperty(normalized.partitionKey);
+  if (!partitionKey || partitionKey.includes('/')) {
+    return { ok: false, message: 'Connection details are invalid' };
+  }
+
+  return {
+    ok: true,
+    value: { ...normalized, partitionKey }
+  };
+}
+
+function sendError(res, status, code, message, diagnostics) {
+  const body = { error: { code, message } };
+  if (diagnostics) {
+    body.diagnostics = diagnostics;
+  }
+  res.status(status).send(body);
+}
+
+function createApp({ client, connectionManager, allowedOrigin = 'http://localhost:5173' }) {
   const app = express();
 
   app.use(cors({
@@ -33,6 +89,50 @@ function createApp({ client, allowedOrigin = 'http://localhost:5173' }) {
 
   app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  app.get('/connection', (req, res) => {
+    res.json(connectionManager
+      ? connectionManager.getStatus()
+      : { status: 'disconnected' });
+  });
+
+  app.put('/connection', async (req, res) => {
+    const validation = validateConnectionInput(req.body);
+    if (!validation.ok) {
+      sendError(res, 400, 'CONNECTION_INPUT_INVALID', validation.message);
+      return;
+    }
+
+    if (!connectionManager) {
+      sendError(res, 503, 'NO_CONNECTION_MANAGER', 'Connection switching is unavailable');
+      return;
+    }
+
+    try {
+      const result = await connectionManager.switchConnection(validation.value);
+      res.json({ status: 'connected', ...result });
+    } catch (error) {
+      const code = error && error.code;
+      console.error('Connection switch failed:', code || 'UNKNOWN');
+      if (code === 'GRAPH_OPERATION_ACTIVE' || code === 'CONNECTION_SWITCH_ACTIVE') {
+        sendError(
+          res,
+          409,
+          'OPERATION_IN_PROGRESS',
+          'Wait for the active graph operation to finish'
+        );
+        return;
+      }
+
+      sendError(
+        res,
+        502,
+        'CONNECTION_PROBE_FAILED',
+        'Could not verify the Cosmos DB connection',
+        error && error.diagnostics
+      );
+    }
   });
 
   app.post('/query', async (req, res) => {
@@ -87,8 +187,10 @@ function createApp({ client, allowedOrigin = 'http://localhost:5173' }) {
 }
 
 module.exports = {
+  CONNECTION_FIELD_LIMITS,
   MAX_QUERY_LENGTH,
   createApp,
   isValidTraversalRequest,
-  isValidQuery
+  isValidQuery,
+  validateConnectionInput
 };
