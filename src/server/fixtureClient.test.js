@@ -34,4 +34,17 @@ describe('fixture Gremlin client', () => {
     expect(vertexResult._items.map(vertex => vertex.id)).toEqual(['project-1', 'person-1']);
     expect(edgeResult._items.map(edge => edge.id)).toEqual(['edge-2', 'edge-3']);
   });
+
+  it('returns deterministic request attributes and rejects work after closing', async () => {
+    const client = createFixtureClient();
+
+    const probe = await client.submit("g.V().has('type').limit(1)", {});
+    expect(probe.attributes).toEqual(new Map([
+      ['x-ms-total-request-charge', 0.5]
+    ]));
+
+    await client.close();
+    await expect(client.submit('g.V()', {})).rejects.toThrow('Fixture client is closed');
+    await expect(client.close()).resolves.toBeUndefined();
+  });
 });
