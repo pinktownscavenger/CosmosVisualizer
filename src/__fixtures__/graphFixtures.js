@@ -6,7 +6,8 @@ export const rawVertices = [
     properties: {
       name: [{ value: 'Ada Lovelace' }],
       aliases: [{ value: 'Ada' }, { value: 'Enchantress of Numbers' }],
-      active: [{ value: true }]
+      active: [{ value: true }],
+      type: [{ value: 'person' }]
     }
   },
   {
@@ -15,7 +16,8 @@ export const rawVertices = [
     type: 'vertex',
     properties: {
       name: [{ value: 'Analytical Engines Ltd' }],
-      founded: [{ value: 1843 }]
+      founded: [{ value: 1843 }],
+      type: [{ value: 'company' }]
     }
   },
   {
@@ -24,14 +26,17 @@ export const rawVertices = [
     type: 'vertex',
     properties: {
       title: [{ value: 'Graph Modernization' }],
-      priority: [{ value: 1 }]
+      priority: [{ value: 1 }],
+      type: [{ value: 'project' }]
     }
   },
   {
     id: "tag-'quoted\\id",
     label: 'tag',
     type: 'vertex',
-    properties: {}
+    properties: {
+      type: [{ value: 'tag' }]
+    }
   }
 ];
 
@@ -89,8 +94,10 @@ export const normalizedGraph = [
     properties: {
       name: ['Ada Lovelace'],
       aliases: ['Ada', 'Enchantress of Numbers'],
-      active: [true]
+      active: [true],
+      type: ['person']
     },
+    partition: { name: 'type', value: 'person' },
     edges: [
       {
         id: 'edge-1',
@@ -127,8 +134,10 @@ export const normalizedGraph = [
     type: 'vertex',
     properties: {
       name: ['Analytical Engines Ltd'],
-      founded: [1843]
+      founded: [1843],
+      type: ['company']
     },
+    partition: { name: 'type', value: 'company' },
     edges: [
       {
         id: 'edge-1',
@@ -147,8 +156,10 @@ export const normalizedGraph = [
     type: 'vertex',
     properties: {
       title: ['Graph Modernization'],
-      priority: [1]
+      priority: [1],
+      type: ['project']
     },
+    partition: { name: 'type', value: 'project' },
     edges: [
       {
         id: 'edge-2',
@@ -190,7 +201,8 @@ export const normalizedGraph = [
     id: "tag-'quoted\\id",
     label: 'tag',
     type: 'vertex',
-    properties: {},
+    properties: { type: ['tag'] },
+    partition: { name: 'type', value: 'tag' },
     edges: [
       {
         id: 'edge-4',

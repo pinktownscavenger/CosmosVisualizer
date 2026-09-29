@@ -9,17 +9,27 @@ const {
   makeTraversalVertexQuery,
   makeVertexQuery,
   mapPropertiesToObj,
+  normalizePartitionKeyProperty,
   normalizeEdge,
   uniqueEdges,
   verticesToJson
 } = require('./graphHelpers');
 
 describe('graph helper normalization', () => {
+  it('normalizes supported partition key property paths', () => {
+    expect(normalizePartitionKeyProperty('type')).toBe('type');
+    expect(normalizePartitionKeyProperty('/type')).toBe('type');
+    expect(normalizePartitionKeyProperty('')).toBeNull();
+    expect(normalizePartitionKeyProperty('/')).toBeNull();
+    expect(normalizePartitionKeyProperty(null)).toBeNull();
+  });
+
   it('maps Cosmos valueMap properties to plain object arrays', () => {
     expect(mapPropertiesToObj(rawVertices[0].properties)).toEqual({
       name: ['Ada Lovelace'],
       aliases: ['Ada', 'Enchantress of Numbers'],
-      active: [true]
+      active: [true],
+      type: ['person']
     });
   });
 
@@ -41,6 +51,33 @@ describe('graph helper normalization', () => {
 
   it('attaches adjacent edges to normalized vertices', () => {
     expect(verticesToJson(rawVertices, rawEdges)).toEqual(normalizedGraph);
+  });
+
+  it('adds scalar partition metadata while preserving the property array', () => {
+    const [vertex] = verticesToJson([
+      {
+        id: 'person-1',
+        label: 'person',
+        type: 'vertex',
+        properties: { type: [{ value: 'person' }] }
+      }
+    ], [], '/type');
+
+    expect(vertex.partition).toEqual({ name: 'type', value: 'person' });
+    expect(vertex.properties.type).toEqual(['person']);
+  });
+
+  it('reports a missing configured partition value without inferring one', () => {
+    const [vertex] = verticesToJson([
+      {
+        id: 'person-1',
+        label: 'person',
+        type: 'vertex',
+        properties: {}
+      }
+    ], [], 'type');
+
+    expect(vertex.partition).toEqual({ name: 'type', value: null });
   });
 
   it('returns an empty graph for empty vertex results', () => {

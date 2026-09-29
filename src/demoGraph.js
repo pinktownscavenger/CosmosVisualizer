@@ -6,6 +6,7 @@ export const demoNodes = [
     label: 'Ada Lovelace',
     group: 'person',
     type: 'person',
+    partition: { name: 'type', value: 'person' },
     properties: {
       name: 'Ada Lovelace',
       role: 'Graph analyst',
@@ -17,6 +18,7 @@ export const demoNodes = [
     label: 'Analytical Engines',
     group: 'company',
     type: 'company',
+    partition: { name: 'type', value: 'company' },
     properties: {
       name: 'Analytical Engines',
       founded: '1843'
@@ -27,6 +29,7 @@ export const demoNodes = [
     label: 'CosmosVisualizer',
     group: 'project',
     type: 'project',
+    partition: { name: 'type', value: 'project' },
     properties: {
       name: 'CosmosVisualizer',
       status: 'Frontend revamp'
@@ -37,6 +40,7 @@ export const demoNodes = [
     label: 'User graph',
     group: 'dataset',
     type: 'dataset',
+    partition: { name: 'type', value: 'dataset' },
     properties: {
       records: '12.4k',
       freshness: 'live'
@@ -47,6 +51,7 @@ export const demoNodes = [
     label: 'Production',
     group: 'tag',
     type: 'tag',
+    partition: { name: 'type', value: 'tag' },
     properties: {
       environment: 'production'
     }

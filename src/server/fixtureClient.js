@@ -6,7 +6,8 @@ const rawVertices = [
     properties: {
       name: [{ value: 'Ada Lovelace' }],
       aliases: [{ value: 'Ada' }, { value: 'Enchantress of Numbers' }],
-      active: [{ value: true }]
+      active: [{ value: true }],
+      type: [{ value: 'person' }]
     }
   },
   {
@@ -15,7 +16,8 @@ const rawVertices = [
     type: 'vertex',
     properties: {
       name: [{ value: 'Analytical Engines Ltd' }],
-      founded: [{ value: 1843 }]
+      founded: [{ value: 1843 }],
+      type: [{ value: 'company' }]
     }
   },
   {
@@ -24,14 +26,17 @@ const rawVertices = [
     type: 'vertex',
     properties: {
       title: [{ value: 'Graph Modernization' }],
-      priority: [{ value: 1 }]
+      priority: [{ value: 1 }],
+      type: [{ value: 'project' }]
     }
   },
   {
     id: "tag-'quoted\\id",
     label: 'tag',
     type: 'vertex',
-    properties: {}
+    properties: {
+      type: [{ value: 'tag' }]
+    }
   }
 ];
 

@@ -12,6 +12,7 @@ describe('fixture Gremlin client', () => {
     const edgeResult = await client.submit("g.V('person-1').bothE()", {});
 
     expect(verticesToJson(vertexResult._items, edgeResult._items)).toEqual(normalizedGraph);
+    expect(vertexResult._items.every(vertex => vertex.properties.type[0].value === vertex.label)).toBe(true);
   });
 
   it('filters fixture out traversal results to connected neighbors', async () => {
