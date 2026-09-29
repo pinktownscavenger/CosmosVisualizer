@@ -1,8 +1,15 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
-import { Header } from './HeaderComponent';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Header, formatRequestCharge, getConnectionLabel } from './HeaderComponent';
 import { ACTIONS } from '../../constants';
+import { executeQuery, getConnection, switchConnection } from '../../api/gremlinApi';
+
+vi.mock('../../api/gremlinApi', () => ({
+  executeQuery: vi.fn(),
+  getConnection: vi.fn(),
+  switchConnection: vi.fn()
+}));
 
 const baseProps = {
   dispatch: vi.fn(),
@@ -13,10 +20,21 @@ const baseProps = {
   nodes: [{ id: 'node-1' }],
   edges: [],
   nodeLabels: [],
-  nodeLimit: 100
+  nodeLimit: 100,
+  latestDiagnostics: null,
+  connectionStatus: 'connected',
+  connection: { mode: 'fixture', partitionKey: 'type' },
+  connectionLoading: false,
+  connectionSwitching: false,
+  connectionError: null,
+  probeDiagnostics: null
 };
 
 describe('header query controls', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('clears the graph without clearing query history', () => {
     const dispatch = vi.fn();
     const header = new Header({ ...baseProps, dispatch });
@@ -38,5 +56,152 @@ describe('header query controls', () => {
 
     expect(html).toContain('query-status--empty');
     expect(html).toContain('Cosmos returned no vertices');
+  });
+
+  it('loads sanitized connection status on mount', async () => {
+    const dispatch = vi.fn();
+    const payload = { status: 'connected', connection: { mode: 'fixture', partitionKey: 'type' } };
+    getConnection.mockResolvedValue(payload);
+    const header = new Header({ ...baseProps, dispatch });
+
+    await header.componentDidMount();
+
+    expect(dispatch.mock.calls).toEqual([
+      [{ type: ACTIONS.LOAD_CONNECTION_START }],
+      [{ type: ACTIONS.LOAD_CONNECTION_SUCCESS, payload }]
+    ]);
+  });
+
+  it('renders exact fixture, disconnected, and Cosmos labels', () => {
+    expect(getConnectionLabel('connected', { mode: 'fixture' })).toBe('Fixture');
+    expect(getConnectionLabel('disconnected', null)).toBe('Disconnected');
+    expect(getConnectionLabel('connected', {
+      mode: 'cosmos',
+      endpointHost: 'account.gremlin.cosmos.azure.com',
+      database: 'db',
+      container: 'graph'
+    })).toBe('account.gremlin.cosmos.azure.com / db / graph');
+  });
+
+  it('disables graph execution while disconnected, loading, or switching', () => {
+    for (const props of [
+      { connectionStatus: 'disconnected' },
+      { connectionLoading: true },
+      { connectionSwitching: true }
+    ]) {
+      const html = ReactDOMServer.renderToStaticMarkup(<Header {...baseProps} {...props} />);
+      expect(html).toMatch(/type="submit"[^>]*disabled=""/);
+    }
+  });
+
+  it('disables switching while a graph operation is running', () => {
+    const html = ReactDOMServer.renderToStaticMarkup(
+      <Header {...baseProps} queryStatus="running" />
+    );
+
+    expect(html).toMatch(/connection-control__switch[^>]*disabled=""|disabled=""[^>]*connection-control__switch/);
+  });
+
+  it('clears graph and graph diagnostics after a successful connection switch without clearing query state', async () => {
+    const dispatch = vi.fn();
+    const response = {
+      status: 'connected',
+      connection: {
+        mode: 'cosmos',
+        endpointHost: 'next.example.com',
+        database: 'next-db',
+        container: 'next-graph',
+        partitionKey: 'type'
+      },
+      diagnostics: { operation: 'connection-probe' }
+    };
+    switchConnection.mockResolvedValue(response);
+    const header = new Header({ ...baseProps, dispatch });
+
+    await header.switchConnection({
+      endpoint: 'wss://next.example.com:443/',
+      primaryKey: 'one-shot-secret',
+      database: 'next-db',
+      container: 'next-graph',
+      partitionKey: 'type'
+    });
+
+    expect(dispatch.mock.calls).toEqual([
+      [{ type: ACTIONS.SWITCH_CONNECTION_START }],
+      [{ type: ACTIONS.SWITCH_CONNECTION_SUCCESS, payload: response }],
+      [{ type: ACTIONS.CLEAR_GRAPH }],
+      [{ type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS }]
+    ]);
+    expect(JSON.stringify(dispatch.mock.calls)).not.toContain('one-shot-secret');
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: ACTIONS.SET_QUERY }));
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: ACTIONS.CLEAR_QUERY_HISTORY }));
+  });
+
+  it('preserves graph state after a failed switch and exposes only a safe failure action', async () => {
+    const dispatch = vi.fn();
+    const error = Object.assign(new Error('Connection probe failed'), {
+      diagnostics: { operation: 'connection-probe', requestCharge: { total: 1.5 } }
+    });
+    switchConnection.mockRejectedValue(error);
+    const header = new Header({ ...baseProps, dispatch });
+
+    await expect(header.switchConnection({ primaryKey: 'one-shot-secret' })).rejects.toThrow('Connection probe failed');
+
+    expect(dispatch.mock.calls).toEqual([
+      [{ type: ACTIONS.SWITCH_CONNECTION_START }],
+      [{
+        type: ACTIONS.SWITCH_CONNECTION_FAILURE,
+        payload: { message: 'Connection probe failed', diagnostics: error.diagnostics }
+      }]
+    ]);
+    expect(JSON.stringify(dispatch.mock.calls)).not.toContain('one-shot-secret');
+  });
+
+  it('formats RU totals, request breakdowns, traversal identity, and unavailable charges', () => {
+    expect(formatRequestCharge({
+      operation: 'query',
+      requestCharge: {
+        total: 47.2,
+        requests: [
+          { kind: 'vertices', charge: 31.4 },
+          { kind: 'edges', charge: 15.8 }
+        ]
+      }
+    })).toBe('47.20 RUs total - vertices 31.40 + edges 15.80');
+    expect(formatRequestCharge({
+      operation: 'traverse-in',
+      requestCharge: { total: 8.75, requests: [{ kind: 'vertices', charge: 8.75 }] }
+    })).toBe('Inbound traversal - 8.75 RUs total - vertices 8.75');
+    expect(formatRequestCharge({ operation: 'query' })).toBe('Charge unavailable');
+    expect(formatRequestCharge(null)).toBeNull();
+  });
+
+  it('shows partition advisories without disabling Execute or changing history', () => {
+    const dispatch = vi.fn();
+    const html = ReactDOMServer.renderToStaticMarkup(
+      <Header {...baseProps} dispatch={dispatch} query="g.V()" />
+    );
+
+    expect(html).toContain('may scan multiple partitions');
+    expect(html).not.toMatch(/type="submit"[^>]*disabled=""/);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('routes query failures through the shared graph request helper', async () => {
+    const dispatch = vi.fn();
+    executeQuery.mockRejectedValue(Object.assign(new Error('unavailable'), {
+      kind: 'network',
+      diagnostics: { operation: 'query', requestCharge: { total: 0.5 } }
+    }));
+    const header = new Header({ ...baseProps, dispatch, query: 'g.V()' });
+
+    header.sendQuery();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: ACTIONS.SET_OPERATION_DIAGNOSTICS,
+      payload: { operation: 'query', requestCharge: { total: 0.5 } }
+    });
   });
 });

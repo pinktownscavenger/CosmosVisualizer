@@ -150,6 +150,36 @@ textarea:focus-visible,
   gap: 8px;
 }
 
+.connection-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 4px 6px 4px 12px;
+  border: 1px solid rgba(34, 197, 94, 0.32);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.38);
+}
+
+.connection-control__label {
+  max-width: min(38vw, 430px);
+  overflow: hidden;
+  color: #bbf7d0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-control__switch.MuiButton-root {
+  min-width: 68px;
+  min-height: 36px;
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #bbf7d0;
+  font-weight: 700;
+  text-transform: none;
+}
+
 .metric-pill {
   min-width: 76px;
   padding: 8px 10px;
@@ -181,6 +211,94 @@ textarea:focus-visible,
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 12px;
   align-items: stretch;
+}
+
+.query-advisories {
+  padding: 9px 11px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 8px;
+  background: rgba(120, 53, 15, 0.18);
+  color: #fde68a;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.query-advisories p {
+  margin: 0;
+}
+
+.query-advisories p + p {
+  margin-top: 6px;
+}
+
+.operation-diagnostics {
+  padding: 9px 11px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 8px;
+  background: rgba(14, 116, 144, 0.14);
+  color: #bae6fd;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.connection-error {
+  padding: 10px 12px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.22);
+  color: #fecaca;
+  font-size: 0.86rem;
+}
+
+.connection-dialog .MuiDialog-paper {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #111827;
+  color: var(--color-text);
+}
+
+.connection-dialog .MuiDialogTitle-root,
+.connection-dialog .MuiDialogContentText-root,
+.connection-dialog .MuiInputBase-root,
+.connection-dialog .MuiFormLabel-root,
+.connection-dialog .MuiFormHelperText-root {
+  color: var(--color-text);
+}
+
+.connection-dialog .MuiDialogContentText-root,
+.connection-dialog .MuiFormHelperText-root {
+  color: var(--color-muted);
+}
+
+.connection-dialog .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-border);
+}
+
+.connection-dialog__fields {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.connection-dialog__probe,
+.connection-dialog__error {
+  margin-top: 14px;
+  padding: 9px 11px;
+  border-radius: 8px;
+}
+
+.connection-dialog__probe {
+  border: 1px solid rgba(34, 197, 94, 0.32);
+  background: rgba(20, 83, 45, 0.2);
+  color: #bbf7d0;
+}
+
+.connection-dialog__probe--error,
+.connection-dialog__error {
+  border: 1px solid rgba(248, 113, 113, 0.38);
+  background: rgba(127, 29, 29, 0.22);
+  color: #fecaca;
 }
 
 .query-field {
@@ -719,6 +837,15 @@ textarea:focus-visible,
 
   .header__meta {
     justify-content: flex-start;
+  }
+
+  .connection-control {
+    width: 100%;
+  }
+
+  .connection-control__label {
+    max-width: none;
+    flex: 1;
   }
 
   .query-form {
