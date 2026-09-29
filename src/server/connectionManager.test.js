@@ -218,4 +218,23 @@ describe('connection concurrency and shutdown', () => {
       code: 'NO_ACTIVE_CONNECTION'
     });
   });
+
+  it('closes an in-flight candidate instead of installing it after shutdown', async () => {
+    const probe = deferred();
+    const candidate = makeClient(vi.fn().mockReturnValue(probe.promise));
+    const manager = createConnectionManager({
+      clientFactory: vi.fn().mockReturnValue(candidate)
+    });
+    const switching = manager.switchConnection(cosmosConfig);
+
+    await manager.close();
+    probe.resolve({
+      _items: [],
+      attributes: new Map([['x-ms-total-request-charge', 1]])
+    });
+
+    await expect(switching).rejects.toMatchObject({ code: 'CONNECTION_PROBE_FAILED' });
+    expect(candidate.close).toHaveBeenCalledOnce();
+    expect(manager.getStatus()).toEqual({ status: 'disconnected' });
+  });
 });

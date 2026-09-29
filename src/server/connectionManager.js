@@ -84,6 +84,9 @@ function createConnectionManager({ clientFactory, initialClient = null, initialC
       const diagnostics = buildOperationDiagnostics('connection-probe', [
         { kind: 'probe', source: probeResult }
       ]);
+      if (closed) {
+        throw managerError('NO_ACTIVE_CONNECTION', 'The connection manager is closed');
+      }
       const connection = sanitizeConnection({ mode: 'cosmos', ...config, partitionKey });
       const previousClient = activeClient;
 
