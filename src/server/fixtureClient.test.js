@@ -11,7 +11,7 @@ describe('fixture Gremlin client', () => {
     const vertexResult = await client.submit('g.V().limit(25)', {});
     const edgeResult = await client.submit("g.V('person-1').bothE()", {});
 
-    expect(verticesToJson(vertexResult._items, edgeResult._items)).toEqual(normalizedGraph);
+    expect(verticesToJson(vertexResult._items, edgeResult._items, 'type')).toEqual(normalizedGraph);
     expect(vertexResult._items.every(vertex => vertex.properties.type[0].value === vertex.label)).toBe(true);
   });
 

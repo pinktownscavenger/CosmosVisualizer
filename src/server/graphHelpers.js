@@ -59,7 +59,7 @@ function uniqueEdges(edges) {
   });
 }
 
-function verticesToJson(vertices, edges, partitionKey = 'type') {
+function verticesToJson(vertices, edges, partitionKey) {
   const edgeMap = buildEdgeMap(edges);
   const partitionName = normalizePartitionKeyProperty(partitionKey);
 
