@@ -4,6 +4,7 @@ import { rawEdges, rawVertices, normalizedGraph } from '../__fixtures__/graphFix
 const {
   escapeGremlinString,
   makeEdgeQuery,
+  makeConnectionProbeQuery,
   makeLimitClause,
   makeTraversalEdgeQuery,
   makeTraversalVertexQuery,
@@ -92,6 +93,13 @@ describe('graph helper normalization', () => {
 });
 
 describe('graph helper query builders', () => {
+  it('builds a read-only connection probe for the configured partition property', () => {
+    expect(makeConnectionProbeQuery('type')).toBe("g.V().has('type').limit(1)");
+    expect(makeConnectionProbeQuery("kind'\\value")).toBe(
+      "g.V().has('kind\\'\\\\value').limit(1)"
+    );
+  });
+
   it('escapes Gremlin string ids', () => {
     expect(escapeGremlinString("tag-'quoted\\id")).toBe("tag-\\'quoted\\\\id");
   });

@@ -120,6 +120,10 @@ function makeEdgeQuery(vertexIds) {
   `;
 }
 
+function makeConnectionProbeQuery(partitionKey) {
+  return `g.V().has('${escapeGremlinString(partitionKey)}').limit(1)`;
+}
+
 function makeVertexQuery(query, nodeLimit) {
   return `${query}${makeLimitClause(nodeLimit)}`;
 }
@@ -159,6 +163,7 @@ function makeTraversalEdgeQuery(nodeId, direction, neighborIds) {
 module.exports = {
   buildEdgeMap,
   escapeGremlinString,
+  makeConnectionProbeQuery,
   makeEdgeQuery,
   makeLimitClause,
   makeTraversalEdgeQuery,
