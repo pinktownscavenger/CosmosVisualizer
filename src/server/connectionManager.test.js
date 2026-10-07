@@ -233,7 +233,7 @@ describe('connection concurrency and shutdown', () => {
       attributes: new Map([['x-ms-total-request-charge', 1]])
     });
 
-    await expect(switching).rejects.toMatchObject({ code: 'CONNECTION_PROBE_FAILED' });
+    await expect(switching).rejects.toMatchObject({ code: 'CONNECTION_MANAGER_CLOSED' });
     expect(candidate.close).toHaveBeenCalledOnce();
     expect(manager.getStatus()).toEqual({ status: 'disconnected' });
   });
@@ -249,7 +249,7 @@ describe('connection concurrency and shutdown', () => {
     await manager.close();
     factory.resolve(candidate);
 
-    await expect(switching).rejects.toMatchObject({ code: 'CONNECTION_PROBE_FAILED' });
+    await expect(switching).rejects.toMatchObject({ code: 'CONNECTION_MANAGER_CLOSED' });
     expect(candidate.submit).not.toHaveBeenCalled();
     expect(candidate.close).toHaveBeenCalledOnce();
     expect(manager.getStatus()).toEqual({ status: 'disconnected' });

@@ -1,90 +1,22 @@
-const rawVertices = [
-  {
-    id: 'person-1',
-    label: 'person',
-    type: 'vertex',
-    properties: {
-      name: [{ value: 'Ada Lovelace' }],
-      aliases: [{ value: 'Ada' }, { value: 'Enchantress of Numbers' }],
-      active: [{ value: true }],
-      type: [{ value: 'person' }]
-    }
-  },
-  {
-    id: 'company-1',
-    label: 'company',
-    type: 'vertex',
-    properties: {
-      name: [{ value: 'Analytical Engines Ltd' }],
-      founded: [{ value: 1843 }],
-      type: [{ value: 'company' }]
-    }
-  },
-  {
-    id: 'project-1',
-    label: 'project',
-    type: 'vertex',
-    properties: {
-      title: [{ value: 'Graph Modernization' }],
-      priority: [{ value: 1 }],
-      type: [{ value: 'project' }]
-    }
-  },
-  {
-    id: "tag-'quoted\\id",
-    label: 'tag',
-    type: 'vertex',
-    properties: {
-      type: [{ value: 'tag' }]
-    }
-  }
-];
+const demoGraphData = require('../demoGraphData.json');
 
-const rawEdges = [
-  {
-    id: 'edge-1',
-    label: 'works_at',
-    from: 'person-1',
-    to: 'company-1',
-    properties: {
-      since: [{ value: 1843 }]
-    }
-  },
-  {
-    id: 'edge-2',
-    label: 'created',
-    from: 'person-1',
-    to: 'project-1',
-    properties: {
-      confidence: [{ value: 0.98 }]
-    }
-  },
-  {
-    id: 'edge-3',
-    label: 'reviewed',
-    from: 'person-1',
-    to: 'project-1',
-    properties: {
-      status: [{ value: 'complete' }]
-    }
-  },
-  {
-    id: 'edge-4',
-    label: 'related_to',
-    from: 'project-1',
-    to: "tag-'quoted\\id",
-    properties: {}
-  },
-  {
-    id: 'edge-5',
-    label: 'self',
-    from: 'project-1',
-    to: 'project-1',
-    properties: {
-      note: [{ value: 'self-loop' }]
-    }
-  }
-];
+// Fixture mode serves the same graph the client shows on startup, in the raw
+// Gremlin GraphSON shape Cosmos returns (each property value wrapped in a list).
+const toGremlinProperties = (properties) => Object.fromEntries(
+  Object.entries(properties).map(([key, value]) => [key, [{ value }]])
+);
+
+const rawVertices = demoGraphData.vertices.map(vertex => ({
+  id: vertex.id,
+  label: vertex.label,
+  type: 'vertex',
+  properties: toGremlinProperties(vertex.properties)
+}));
+
+const rawEdges = demoGraphData.edges.map(edge => ({
+  ...edge,
+  properties: toGremlinProperties(edge.properties)
+}));
 
 function unique(values) {
   return [...new Set(values)];
@@ -109,7 +41,7 @@ function parseLimit(query) {
 }
 
 function limitList(list, limit) {
-  return Number.isInteger(limit) && limit > 0 ? list.slice(0, limit) : list;
+  return Number.isInteger(limit) && limit >= 0 ? list.slice(0, limit) : list;
 }
 
 function getTraversalVertices(query) {

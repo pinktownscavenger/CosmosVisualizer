@@ -142,7 +142,15 @@ describe('header query controls', () => {
       [{ type: ACTIONS.SWITCH_CONNECTION_START }],
       [{ type: ACTIONS.SWITCH_CONNECTION_SUCCESS, payload: response }],
       [{ type: ACTIONS.CLEAR_GRAPH }],
-      [{ type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS }]
+      [{ type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS }],
+      [{ type: ACTIONS.SET_ERROR, payload: null }],
+      [{
+        type: ACTIONS.SET_QUERY_STATUS,
+        payload: {
+          status: 'idle',
+          message: 'Connected to next.example.com / next-db / next-graph. Run a query to load the graph.'
+        }
+      }]
     ]);
     expect(JSON.stringify(dispatch.mock.calls)).not.toContain('one-shot-secret');
     expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: ACTIONS.SET_QUERY }));
@@ -215,5 +223,18 @@ describe('header query controls', () => {
       type: ACTIONS.SET_OPERATION_DIAGNOSTICS,
       payload: { operation: 'query', requestCharge: { total: 0.5 } }
     });
+  });
+});
+
+describe('connection dialog opening', () => {
+  it('clears the previous switch result before opening the dialog', () => {
+    const dispatch = vi.fn();
+    const header = new Header({ ...baseProps, dispatch });
+    header.setState = vi.fn();
+
+    header.openConnectionDialog();
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
+    expect(header.setState).toHaveBeenCalledWith({ connectionDialogOpen: true });
   });
 });

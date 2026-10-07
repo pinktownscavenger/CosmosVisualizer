@@ -35,7 +35,7 @@ import { ACTIONS } from '../../constants';
 import { executeQuery, executeTraversal } from '../../api/gremlinApi';
 import { onFetchQuery, onGraphRequestFailure } from '../../logics/actionHelper';
 import { getQueryResultStatus } from '../../logics/queryFeedback';
-import { stringifyObjectValues} from '../../logics/utils';
+import { makeTraversalHistoryQuery, stringifyObjectValues } from '../../logics/utils';
 import { getSelectedResultPayload } from '../../logics/selectedResult';
 
 export const QueryHistoryList = ({ queries, disabled, onRunQuery, onLoadQuery, onClearHistory }) => {
@@ -234,7 +234,7 @@ export class Details extends React.Component {
   }
 
   onTraverse(nodeId, direction) {
-    const query = `g.V('${nodeId}').${direction}()`;
+    const query = makeTraversalHistoryQuery(nodeId, direction);
     this.props.dispatch({
       type: ACTIONS.SET_QUERY_STATUS,
       payload: { status: 'running', message: `Traversing ${direction === 'in' ? 'inbound' : 'outbound'} edges...` }

@@ -139,9 +139,20 @@ describe('graph helper query builders', () => {
     expect(makeVertexQuery('g.V()', '')).toBe('g.V()');
   });
 
+  it('strips trailing semicolons and whitespace before appending the node limit', () => {
+    expect(makeVertexQuery('g.V();', 2)).toBe('g.V().limit(2)');
+    expect(makeVertexQuery('g.V() ; \n', 2)).toBe('g.V().limit(2)');
+  });
+
+  it('limits traversal neighbors so the origin plus neighbors fits the node limit', () => {
+    expect(makeTraversalVertexQuery('person-1', 'out', 1)).toContain(
+      "g.V('person-1').union(identity(), out().limit(0)).dedup()"
+    );
+  });
+
   it('builds traversal vertex queries that keep the selected origin node', () => {
     expect(makeTraversalVertexQuery('person-1', 'out', 3)).toContain(
-      "g.V('person-1').union(identity(), out().limit(3)).dedup()"
+      "g.V('person-1').union(identity(), out().limit(2)).dedup()"
     );
     expect(makeTraversalVertexQuery("tag-'quoted\\id", 'in', '')).toContain(
       "g.V('tag-\\'quoted\\\\id').union(identity(), in()).dedup()"

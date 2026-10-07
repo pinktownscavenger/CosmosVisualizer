@@ -1,0 +1,36 @@
+{
+  "vertices": [
+    {
+      "id": "person-ada",
+      "label": "person",
+      "properties": { "name": "Ada Lovelace", "role": "Graph analyst", "active": true, "type": "person" }
+    },
+    {
+      "id": "company-engine",
+      "label": "company",
+      "properties": { "name": "Analytical Engines", "founded": 1843, "type": "company" }
+    },
+    {
+      "id": "project-cosmos",
+      "label": "project",
+      "properties": { "name": "CosmosVisualizer", "status": "Frontend revamp", "type": "project" }
+    },
+    {
+      "id": "dataset-users",
+      "label": "dataset",
+      "properties": { "name": "User graph", "records": "12.4k", "freshness": "live", "type": "dataset" }
+    },
+    {
+      "id": "tag-production",
+      "label": "tag",
+      "properties": { "name": "Production", "environment": "production", "type": "tag" }
+    }
+  ],
+  "edges": [
+    { "id": "edge-owns", "label": "owns", "from": "person-ada", "to": "project-cosmos", "properties": { "since": 2026 } },
+    { "id": "edge-builds", "label": "builds", "from": "company-engine", "to": "project-cosmos", "properties": { "confidence": 0.98 } },
+    { "id": "edge-queries", "label": "queries", "from": "project-cosmos", "to": "dataset-users", "properties": { "limit": 100 } },
+    { "id": "edge-deploys", "label": "deploys_to", "from": "project-cosmos", "to": "tag-production", "properties": { "frequency": "daily" } },
+    { "id": "edge-labels", "label": "tagged", "from": "dataset-users", "to": "tag-production", "properties": { "source": "demo" } }
+  ]
+}

@@ -141,4 +141,27 @@ describe('graph reducer', () => {
     });
     expect(state.nodeHolder.update).toHaveBeenCalledWith({ id: 'person-1', label: 'Ada' });
   });
+
+  it('refreshes labels from Cosmos array property values as strings', () => {
+    const state = makeState();
+    state.nodes[0].properties = { name: ['Ada Lovelace'], type: ['person'] };
+    const nextState = reducer(state, {
+      type: ACTIONS.REFRESH_NODE_LABELS,
+      payload: [{ type: 'person', field: 'name' }]
+    });
+
+    expect(nextState.nodes[0].label).toBe('Ada Lovelace');
+    expect(state.nodeHolder.update).toHaveBeenCalledWith({ id: 'person-1', label: 'Ada Lovelace' });
+  });
+
+  it('falls back to the node type when the label field is missing', () => {
+    const state = makeState();
+    const nextState = reducer(state, {
+      type: ACTIONS.REFRESH_NODE_LABELS,
+      payload: [{ type: 'person', field: 'missing' }]
+    });
+
+    expect(nextState.nodes[0].label).toBe('person');
+    expect(state.nodeHolder.update).toHaveBeenCalledWith({ id: 'person-1', label: 'person' });
+  });
 });

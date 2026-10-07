@@ -67,6 +67,8 @@ export const reducer = (state = initialState, action) => {
         error: payload.message || 'Could not switch connection',
         probeDiagnostics: payload.diagnostics || null
       };
+    case ACTIONS.RESET_CONNECTION_FEEDBACK:
+      return { ...state, error: null, probeDiagnostics: null };
     default:
       return state;
   }
