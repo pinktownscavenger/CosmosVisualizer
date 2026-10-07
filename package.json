@@ -5,7 +5,7 @@
   "description": "Explore Azure Cosmos DB Gremlin graphs locally",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.12"
   },
   "dependencies": {
     "@material-ui/core": "^4.7.0",
@@ -22,7 +22,7 @@
     "vis-network": "^6.4.4"
   },
   "scripts": {
-    "client": "vite --host 0.0.0.0",
+    "client": "vite",
     "server": "node proxy-server.js",
     "server:fixture": "USE_FIXTURE_DATA=true node proxy-server.js",
     "start": "concurrently \"npm run server\" \"npm run client\"",

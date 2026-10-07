@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  makeTraversalHistoryQuery,
   extractEdgesAndNodes,
   getDiffEdges,
   getDiffNodes,
@@ -161,5 +162,16 @@ describe('frontend graph utilities', () => {
       name: new String('Ada'),
       details: '{"role":"mathematician"}'
     });
+  });
+});
+
+describe('makeTraversalHistoryQuery', () => {
+  it('builds a rerunnable query that keeps the origin node', () => {
+    expect(makeTraversalHistoryQuery('person-1', 'out')).toBe("g.V('person-1').union(identity(), out())");
+    expect(makeTraversalHistoryQuery('person-1', 'in')).toBe("g.V('person-1').union(identity(), in())");
+  });
+
+  it('escapes quotes and backslashes in node ids', () => {
+    expect(makeTraversalHistoryQuery("o'brien\\x", 'out')).toBe("g.V('o\\'brien\\\\x').union(identity(), out())");
   });
 });

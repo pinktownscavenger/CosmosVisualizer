@@ -59,7 +59,7 @@ Fixture mode sets `USE_FIXTURE_DATA=true` for the proxy process. Do not use fixt
 
 Requirements:
 
-- Node.js 20 or newer and npm
+- Node.js 20.12 or newer and npm
 - Azure Cosmos DB account using the Gremlin API
 
 Copy the example environment file and fill in your Cosmos DB details:
@@ -83,6 +83,7 @@ Optional variables:
 ```sh
 CORS_ORIGIN=http://localhost:5173
 PORT=3001
+HOST=127.0.0.1
 VITE_API_BASE_URL=
 ```
 
@@ -94,7 +95,9 @@ Start the app:
 npm start
 ```
 
-The Vite dev server runs on port `5173`; the API proxy defaults to port `3001`. All five Cosmos variables are required for an automatic startup connection. If one is missing, the server starts safely in disconnected mode and the browser can establish a connection with the **Switch** action.
+The proxy reads `.env` from the project root on startup. Variables already set in your shell take precedence, so `npm run start:fixture` still works with a `.env` that sets `USE_FIXTURE_DATA=false`.
+
+The Vite dev server runs on port `5173`; the API proxy defaults to port `3001`. Both listen on loopback only, so the proxy and your Cosmos key are not reachable from other machines on your network. Set `HOST` only if you deliberately need to expose the proxy. All five Cosmos variables are required for an automatic startup connection. If one is missing or invalid (for example an endpoint that is not a `wss://` URL), the server logs a warning, starts in disconnected mode, and the browser can establish a connection with the **Switch** action.
 
 The partition-key setting accepts a property name such as `type` or `/type`. It is used for partition display, probe construction, and best-effort fan-out advisories; CosmosVisualizer does not infer it from the graph schema.
 
@@ -164,12 +167,12 @@ Build the image from this repository:
 docker build --tag=cosmos-visualizer:latest .
 ```
 
-Run it with your environment file:
+`.env` is excluded from the image by `.dockerignore`; pass it at run time instead. Inside the container both processes listen on all interfaces, so publish the ports on loopback to keep them off your network:
 
 ```sh
 docker run --rm \
-  -p 5173:5173 \
-  -p 3001:3001 \
+  -p 127.0.0.1:5173:5173 \
+  -p 127.0.0.1:3001:3001 \
   --env-file .env \
   --name=cosmos-visualizer \
   cosmos-visualizer:latest
@@ -179,8 +182,8 @@ To run the container with fixture data instead of Cosmos credentials:
 
 ```sh
 docker run --rm \
-  -p 5173:5173 \
-  -p 3001:3001 \
+  -p 127.0.0.1:5173:5173 \
+  -p 127.0.0.1:3001:3001 \
   -e USE_FIXTURE_DATA=true \
   --name=cosmos-visualizer \
   cosmos-visualizer:latest

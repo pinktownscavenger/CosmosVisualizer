@@ -76,4 +76,21 @@ describe('connection reducer', () => {
       probeDiagnostics: { operation: 'connection-probe' }
     });
   });
+
+  it('clears switch errors and probe diagnostics without changing the connection', () => {
+    const state = {
+      status: 'connected',
+      connection: { mode: 'fixture', partitionKey: 'type' },
+      loading: false,
+      switching: false,
+      error: 'Could not verify the Cosmos DB connection',
+      probeDiagnostics: { operation: 'connection-probe' }
+    };
+
+    expect(reducer(state, { type: ACTIONS.RESET_CONNECTION_FEEDBACK })).toEqual({
+      ...state,
+      error: null,
+      probeDiagnostics: null
+    });
+  });
 });

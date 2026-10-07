@@ -5,10 +5,10 @@ export default defineConfig({
   plugins: [react({ jsxRuntime: 'classic' })],
   server: {
     proxy: {
-      '/query': 'http://localhost:3001',
-      '/traverse': 'http://localhost:3001',
-      '/connection': 'http://localhost:3001',
-      '/health': 'http://localhost:3001'
+      '/query': 'http://127.0.0.1:3001',
+      '/traverse': 'http://127.0.0.1:3001',
+      '/connection': 'http://127.0.0.1:3001',
+      '/health': 'http://127.0.0.1:3001'
     }
   },
   test: {

@@ -1,6 +1,6 @@
 import vis from 'vis-network';
 import { ACTIONS } from '../constants';
-import { getDiffNodes, getDiffEdges, findNodeById } from '../logics/utils';
+import { getDiffNodes, getDiffEdges, findNodeById, getNodeLabel } from '../logics/utils';
 import { demoEdges, demoNodes } from '../demoGraph';
 
 const keyBy = (list, key) => list.reduce((result, item) => {
@@ -67,7 +67,7 @@ export const reducer =  (state=initialState, action)=>{
       const nodes = state.nodes.map(node => {
         if (node.type in nodeLabelMap) {
           const field = nodeLabelMap[node.type];
-          const label = node.properties[field];
+          const label = getNodeLabel(node.properties, field, node.type);
           state.nodeHolder.update({id:node.id, label: label});
           return {...node, label };
         }

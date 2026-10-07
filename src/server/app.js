@@ -161,6 +161,10 @@ function createApp({ connectionManager, allowedOrigin = 'http://localhost:5173' 
     } catch (error) {
       const code = error && error.code;
       console.error('Connection switch failed:', code || 'UNKNOWN');
+      if (code === 'CONNECTION_MANAGER_CLOSED') {
+        sendError(res, 503, 'PROXY_SHUTTING_DOWN', 'The Cosmos proxy is shutting down');
+        return;
+      }
       if (code === 'GRAPH_OPERATION_ACTIVE' || code === 'CONNECTION_SWITCH_ACTIVE') {
         sendError(
           res,
@@ -182,8 +186,7 @@ function createApp({ connectionManager, allowedOrigin = 'http://localhost:5173' 
   });
 
   app.post('/query', async (req, res) => {
-    const nodeLimit = req.body.nodeLimit;
-    const query = req.body.query;
+    const { nodeLimit, query } = req.body || {};
 
     if (!isValidQuery(query)) {
       sendError(res, 400, 'QUERY_INPUT_INVALID', 'A Gremlin query is required');
@@ -229,9 +232,7 @@ function createApp({ connectionManager, allowedOrigin = 'http://localhost:5173' 
   });
 
   app.post('/traverse', async (req, res) => {
-    const nodeId = req.body.nodeId;
-    const direction = req.body.direction;
-    const nodeLimit = req.body.nodeLimit;
+    const { nodeId, direction, nodeLimit } = req.body || {};
 
     if (!isValidTraversalRequest({ nodeId, direction })) {
       sendError(
@@ -287,6 +288,10 @@ function createApp({ connectionManager, allowedOrigin = 'http://localhost:5173' 
   app.use((error, req, res, next) => {
     if (error && error.type === 'entity.too.large') {
       sendError(res, 413, 'PAYLOAD_TOO_LARGE', 'Request body is too large');
+      return;
+    }
+    if (error && error.type === 'entity.parse.failed') {
+      sendError(res, 400, 'REQUEST_BODY_INVALID', 'Request body must be valid JSON');
       return;
     }
     next(error);

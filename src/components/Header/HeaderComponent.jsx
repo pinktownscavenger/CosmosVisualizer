@@ -83,6 +83,14 @@ export class Header extends React.Component {
       this.props.dispatch({ type: ACTIONS.SWITCH_CONNECTION_SUCCESS, payload });
       this.props.dispatch({ type: ACTIONS.CLEAR_GRAPH });
       this.props.dispatch({ type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS });
+      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: null });
+      this.props.dispatch({
+        type: ACTIONS.SET_QUERY_STATUS,
+        payload: {
+          status: 'idle',
+          message: `Connected to ${getConnectionLabel('connected', payload.connection)}. Run a query to load the graph.`
+        }
+      });
       return payload;
     }).catch((error) => {
       this.props.dispatch({
@@ -94,6 +102,11 @@ export class Header extends React.Component {
       });
       throw error;
     });
+  }
+
+  openConnectionDialog() {
+    this.props.dispatch({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
+    this.setState({ connectionDialogOpen: true });
   }
 
   clearGraph() {
@@ -175,7 +188,7 @@ export class Header extends React.Component {
                 size="small"
                 className="connection-control__switch"
                 disabled={isExecuting || this.props.connectionLoading || this.props.connectionSwitching}
-                onClick={() => this.setState({ connectionDialogOpen: true })}
+                onClick={this.openConnectionDialog.bind(this)}
               >
                 Switch
               </Button>

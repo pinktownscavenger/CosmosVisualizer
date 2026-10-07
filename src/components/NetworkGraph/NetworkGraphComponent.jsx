@@ -52,6 +52,15 @@ export const refreshNetworkNodeMeasurementsAfterFonts = (network, fontSet) => {
   });
 };
 
+// vis-network has no event for clicking empty canvas, so clear the selection on a bare click.
+export const handleCanvasClick = (params, dispatch) => {
+  const hasNodes = params.nodes && params.nodes.length > 0;
+  const hasEdges = params.edges && params.edges.length > 0;
+  if (!hasNodes && !hasEdges) {
+    dispatch({ type: ACTIONS.SET_SELECTED_NODE, payload: null });
+  }
+};
+
 class NetworkGraph extends React.Component{
   constructor(props) {
     super(props);
@@ -86,6 +95,8 @@ class NetworkGraph extends React.Component{
         this.props.dispatch({ type: ACTIONS.SET_SELECTED_EDGE, payload: edgeId });
       }
     });
+
+    network.on('click', (params) => handleCanvasClick(params, this.props.dispatch));
 
     this.props.dispatch({ type: ACTIONS.SET_NETWORK, payload: network });
   }

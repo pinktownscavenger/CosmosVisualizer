@@ -228,10 +228,14 @@ describe('details traversal actions', () => {
       nodeLabels: []
     });
 
-    await details.onTraverse('person-1', 'out');
+    await details.onTraverse("o'brien", 'out');
 
+    expect(dispatch).toHaveBeenCalledWith({
+      type: ACTIONS.ADD_QUERY_HISTORY,
+      payload: "g.V('o\\'brien').union(identity(), out())"
+    });
     expect(executeTraversal).toHaveBeenCalledWith({
-      nodeId: 'person-1',
+      nodeId: "o'brien",
       direction: 'out',
       nodeLimit: 100
     });
@@ -257,7 +261,7 @@ describe('details traversal actions', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_OPERATION_DIAGNOSTICS, payload: diagnostics });
     expect(dispatch).toHaveBeenCalledWith({
       type: ACTIONS.ADD_QUERY_HISTORY,
-      payload: `g.V('person-1').${direction}()`
+      payload: `g.V('person-1').union(identity(), ${direction}())`
     });
   });
 

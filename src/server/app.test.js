@@ -189,7 +189,7 @@ describe('server app', () => {
         ]
       }
     });
-    expect(submit.mock.calls[0][0]).toContain("g.V('person-1').union(identity(), out().limit(2)).dedup()");
+    expect(submit.mock.calls[0][0]).toContain("g.V('person-1').union(identity(), out().limit(1)).dedup()");
     expect(submit.mock.calls[1][0]).toContain("g.V('person-1').outE()");
     expect(submit.mock.calls[1][0]).toContain("where(inV().hasId('company-1','project-1'))");
   });
@@ -215,7 +215,7 @@ describe('server app', () => {
       'edge-3'
     ]);
     expect(response.body.diagnostics.operation).toBe('traverse-in');
-    expect(submit.mock.calls[0][0]).toContain("g.V('project-1').union(identity(), in().limit(5)).dedup()");
+    expect(submit.mock.calls[0][0]).toContain("g.V('project-1').union(identity(), in().limit(4)).dedup()");
     expect(submit.mock.calls[1][0]).toContain("g.V('project-1').inE()");
     expect(submit.mock.calls[1][0]).toContain("where(outV().hasId('person-1'))");
   });
@@ -505,5 +505,56 @@ describe('connection input validation', () => {
     ['partitionKey', 255]
   ])('rejects %s values beyond the configured length', (field, limit) => {
     expect(validateConnectionInput({ ...valid, [field]: 'x'.repeat(limit + 1) }).ok).toBe(false);
+  });
+});
+
+describe('request body handling', () => {
+  const makeApp = () => createApp({ connectionManager: makeManager(makeClient(vi.fn())) });
+
+  it.each([
+    ['/query', 'QUERY_INPUT_INVALID'],
+    ['/traverse', 'TRAVERSAL_INPUT_INVALID']
+  ])('rejects %s without a JSON body as invalid input', async (route, code) => {
+    const response = await request(makeApp())
+      .post(route)
+      .expect(400)
+      .expect('Content-Type', /json/);
+
+    expect(response.body.error.code).toBe(code);
+  });
+
+  it('rejects malformed JSON with a JSON error envelope', async () => {
+    const response = await request(makeApp())
+      .post('/query')
+      .set('Content-Type', 'application/json')
+      .send('{bad')
+      .expect(400)
+      .expect('Content-Type', /json/);
+
+    expect(response.body).toEqual({
+      error: { code: 'REQUEST_BODY_INVALID', message: 'Request body must be valid JSON' }
+    });
+  });
+});
+
+describe('connection switch during shutdown', () => {
+  it('reports a closed manager as unavailable instead of a failed probe', async () => {
+    const manager = makeManager(makeClient(vi.fn()));
+    manager.switchConnection.mockRejectedValue(
+      Object.assign(new Error('closed'), { code: 'CONNECTION_MANAGER_CLOSED' })
+    );
+
+    const response = await request(createApp({ connectionManager: manager }))
+      .put('/connection')
+      .send({
+        endpoint: 'wss://account.gremlin.cosmos.azure.com:443/',
+        primaryKey: 'key',
+        database: 'db',
+        container: 'graph',
+        partitionKey: 'type'
+      })
+      .expect(503);
+
+    expect(response.body.error.code).toBe('PROXY_SHUTTING_DOWN');
   });
 });

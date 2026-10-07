@@ -125,13 +125,19 @@ function makeConnectionProbeQuery(partitionKey) {
 }
 
 function makeVertexQuery(query, nodeLimit) {
-  return `${query}${makeLimitClause(nodeLimit)}`;
+  const statement = query.replace(/[\s;]+$/, '');
+  return `${statement}${makeLimitClause(nodeLimit)}`;
 }
 
 function makeTraversalVertexQuery(nodeId, direction, nodeLimit) {
   const id = `'${escapeGremlinString(nodeId)}'`;
   const step = direction === 'in' ? 'in' : 'out';
-  return `g.V(${id}).union(identity(), ${step}()${makeLimitClause(nodeLimit)}).dedup()`;
+  // The origin vertex counts toward the node limit, so neighbors get one less slot.
+  const parsedLimit = Number(nodeLimit);
+  const neighborLimit = Number.isInteger(parsedLimit) && parsedLimit > 0
+    ? `.limit(${parsedLimit - 1})`
+    : '';
+  return `g.V(${id}).union(identity(), ${step}()${neighborLimit}).dedup()`;
 }
 
 function makeTraversalEdgeQuery(nodeId, direction, neighborIds) {

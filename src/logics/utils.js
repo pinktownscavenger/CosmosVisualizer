@@ -42,6 +42,11 @@ export const getDiffEdges = (newList, oldList) => {
   return differenceBy(uniqueBy(newList, getEdgeKey), oldList, getEdgeKey);
 };
 
+export const getNodeLabel = (properties, field, type) => {
+  const value = properties && field in properties ? properties[field] : type;
+  return String(value);
+};
+
 export const extractEdgesAndNodes = (nodeList, nodeLabels=[]) => {
   let edges = [];
   const nodes = [];
@@ -57,11 +62,9 @@ export const extractEdgesAndNodes = (nodeList, nodeLabels=[]) => {
       nextNodeLabels.push(nodeLabel);
       nodeLabelMap[type] = field;
     }
-    const labelField = nodeLabelMap[type];
-    const label = labelField in node.properties ? node.properties[labelField] : type;
     nodes.push({
       id: node.id,
-      label: String(label),
+      label: getNodeLabel(node.properties, nodeLabelMap[type], type),
       group: node.label,
       properties: node.properties,
       partition: node.partition,
@@ -72,6 +75,14 @@ export const extractEdgesAndNodes = (nodeList, nodeLabels=[]) => {
   });
 
   return { edges, nodes, nodeLabels: nextNodeLabels }
+};
+
+const escapeGremlinString = (value) => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+// Mirrors the server's traversal so rerunning from history includes the origin node.
+export const makeTraversalHistoryQuery = (nodeId, direction) => {
+  const step = direction === 'in' ? 'in' : 'out';
+  return `g.V('${escapeGremlinString(nodeId)}').union(identity(), ${step}())`;
 };
 
 export const findNodeById = (nodeList, id) => {

@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { GraphHint, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
+import { GraphHint, handleCanvasClick, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
+import { ACTIONS } from '../../constants';
 
 describe('graph hint', () => {
   it('renders a dismiss control when visible', () => {
@@ -49,5 +50,24 @@ describe('font-ready graph measurement refresh', () => {
     await refreshNetworkNodeMeasurementsAfterFonts(network, undefined);
 
     expect(network.redraw).toHaveBeenCalled();
+  });
+});
+
+describe('canvas click selection handling', () => {
+  it('clears the selection when empty canvas is clicked', () => {
+    const dispatch = vi.fn();
+    handleCanvasClick({ nodes: [], edges: [] }, dispatch);
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_SELECTED_NODE, payload: null });
+  });
+
+  it.each([
+    ['a node', { nodes: ['person-1'], edges: ['edge-1'] }],
+    ['an edge', { nodes: [], edges: ['edge-1'] }]
+  ])('leaves selection to the select handlers when %s is clicked', (_name, params) => {
+    const dispatch = vi.fn();
+    handleCanvasClick(params, dispatch);
+
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,16 @@ function managerError(code, message, details = {}) {
   return error;
 }
 
+async function closeQuietly(client) {
+  if (client && typeof client.close === 'function') {
+    try {
+      await client.close();
+    } catch (_) {
+      // Preserve the original probe/factory/shutdown failure.
+    }
+  }
+}
+
 function sanitizeConnection(connection) {
   if (!connection) {
     return null;
@@ -66,7 +76,7 @@ function createConnectionManager({ clientFactory, initialClient = null, initialC
 
   async function switchConnection(config) {
     if (closed) {
-      throw managerError('NO_ACTIVE_CONNECTION', 'The connection manager is closed');
+      throw managerError('CONNECTION_MANAGER_CLOSED', 'The connection manager is closed');
     }
     if (switching) {
       throw managerError('CONNECTION_SWITCH_ACTIVE', 'A connection switch is in progress');
@@ -80,7 +90,7 @@ function createConnectionManager({ clientFactory, initialClient = null, initialC
     try {
       candidate = await clientFactory(config);
       if (closed) {
-        throw managerError('NO_ACTIVE_CONNECTION', 'The connection manager is closed');
+        throw managerError('CONNECTION_MANAGER_CLOSED', 'The connection manager is closed');
       }
       const partitionKey = normalizePartitionKeyProperty(config.partitionKey);
       const probeResult = await candidate.submit(makeConnectionProbeQuery(partitionKey), {});
@@ -88,7 +98,7 @@ function createConnectionManager({ clientFactory, initialClient = null, initialC
         { kind: 'probe', source: probeResult }
       ]);
       if (closed) {
-        throw managerError('NO_ACTIVE_CONNECTION', 'The connection manager is closed');
+        throw managerError('CONNECTION_MANAGER_CLOSED', 'The connection manager is closed');
       }
       const connection = sanitizeConnection({ mode: 'cosmos', ...config, partitionKey });
       const previousClient = activeClient;
@@ -107,17 +117,16 @@ function createConnectionManager({ clientFactory, initialClient = null, initialC
 
       return { connection: { ...connection }, diagnostics };
     } catch (cause) {
+      if (cause && cause.code === 'CONNECTION_MANAGER_CLOSED') {
+        await closeQuietly(candidate);
+        throw cause;
+      }
+
       const diagnostics = buildOperationDiagnostics('connection-probe', [
         { kind: 'probe', source: cause }
       ]);
 
-      if (candidate && typeof candidate.close === 'function') {
-        try {
-          await candidate.close();
-        } catch (_) {
-          // Preserve the original probe/factory failure.
-        }
-      }
+      await closeQuietly(candidate);
 
       throw managerError('CONNECTION_PROBE_FAILED', 'Connection probe failed', {
         cause,
