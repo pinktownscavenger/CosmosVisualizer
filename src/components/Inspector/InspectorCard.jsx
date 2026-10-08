@@ -1,5 +1,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
+import { Collapse, Grow } from '@material-ui/core';
+import { motionTimeout } from '../../logics/motion';
 import { ACTIONS } from '../../constants';
 import { getSelectedResultPayload } from '../../logics/selectedResult';
 import { getDisplayProperties } from '../../logics/propertyFormat';
@@ -101,12 +103,34 @@ export class Inspector extends React.Component {
     );
   }
 
-  render() {
-    const { selectedNode, selectedEdge, collapsed, viewMode } = this.props;
+  // While the card animates out, keep showing what was last selected instead of an empty frame.
+  currentSelection() {
+    const { selectedNode, selectedEdge } = this.props;
     const kind = !isEmpty(selectedNode) ? 'node' : (!isEmpty(selectedEdge) ? 'edge' : null);
-    if (!kind) {
-      return null;
+    if (kind) {
+      this.lastSelection = { kind, selectedNode, selectedEdge };
+      return { open: true, ...this.lastSelection };
     }
+    return { open: false, ...(this.lastSelection || { kind: null }) };
+  }
+
+  render() {
+    const { open, kind, selectedNode, selectedEdge } = this.currentSelection();
+    return (
+      <Grow
+        in={open}
+        timeout={motionTimeout(180)}
+        style={{ transformOrigin: 'top right' }}
+        unmountOnExit
+        onExited={() => { this.lastSelection = null; }}
+      >
+        {kind ? this.renderCard(kind, selectedNode, selectedEdge) : <span />}
+      </Grow>
+    );
+  }
+
+  renderCard(kind, selectedNode, selectedEdge) {
+    const { collapsed, viewMode } = this.props;
     const item = kind === 'node' ? selectedNode : selectedEdge;
     const title = kind === 'node' ? item.label : item.type;
     const badge = kind === 'node' ? item.type : 'edge';
@@ -163,13 +187,13 @@ export class Inspector extends React.Component {
             />
           )}
         </header>
-        {!collapsed && (
+        <Collapse in={!collapsed} timeout={motionTimeout(180)} className="inspector-card__collapse" unmountOnExit>
           <div className="inspector-card__body">
             {isJson
               ? <pre className="inspector-card__json">{JSON.stringify(getSelectedResultPayload(selectedNode, selectedEdge), null, 2)}</pre>
               : <PropertyList rows={getDisplayProperties(item.properties, kind === 'node' ? this.props.partitionKey : null)} />}
           </div>
-        )}
+        </Collapse>
       </aside>
     );
   }

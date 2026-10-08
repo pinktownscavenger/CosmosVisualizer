@@ -14,6 +14,11 @@ describe('graph hint', () => {
     expect(html).toContain('aria-label="Dismiss graph hint"');
   });
 
+  it('fades rather than vanishing', () => {
+    const html = ReactDOMServer.renderToStaticMarkup(<GraphHint visible={true} onDismiss={() => {}} />);
+    expect(html).toMatch(/style="[^"]*opacity/);
+  });
+
   it('renders nothing after it is dismissed', () => {
     expect(ReactDOMServer.renderToStaticMarkup(
       <GraphHint visible={false} onDismiss={() => {}} />
@@ -24,11 +29,18 @@ describe('graph hint', () => {
 describe('re-measuring labels once the graph font loads', () => {
   const makeNetwork = () => {
     const update = vi.fn();
-    const items = [{ id: 'tag-production', label: 'Production', color: {} }, { id: 'project-cosmos', label: 'CosmosVisualizer' }];
+    const items = [
+      { id: 'tag-production', label: 'Production', type: 'tag', color: { background: '#94a3b8' }, shapeProperties: { borderDashes: false } },
+      { id: 'project-cosmos', label: 'CosmosVisualizer', type: 'project' }
+    ];
     return { update, network: { body: { data: { nodes: { get: () => items, update } } }, redraw: vi.fn() } };
   };
   // Re-setting a node's label is what makes vis-network re-measure it; needsRefresh alone keeps the cached width.
-  const relabelled = [[[{ id: 'tag-production', label: 'Production' }, { id: 'project-cosmos', label: 'CosmosVisualizer' }]]];
+  // vis-network re-applies group default colours on an update that omits color, so the palette style travels with the label.
+  const relabelled = [[[
+    { id: 'tag-production', label: 'Production', color: { background: '#94a3b8' }, shapeProperties: { borderDashes: false } },
+    { id: 'project-cosmos', label: 'CosmosVisualizer' }
+  ]]];
   const makeFonts = () => {
     const listeners = {};
     return {

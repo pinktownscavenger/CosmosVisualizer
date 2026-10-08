@@ -811,14 +811,23 @@ textarea:focus-visible,
 }
 
 .graph-legend--collapsed {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
+  gap: 0;
   min-width: 0;
   padding: 3px 4px 3px 9px;
 }
 
-.graph-legend__header {
+.graph-legend__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+
+.graph-legend__toggle {
+  align-self: flex-start;
+}
+
+.graph-legend__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -856,6 +865,11 @@ textarea:focus-visible,
   background: none;
   color: var(--color-muted);
   font-size: 0.75rem;
+  transition: transform 200ms ease;
+}
+
+.graph-legend__chevron--collapsed {
+  transform: rotate(180deg);
 }
 
 .graph-legend__rows {
@@ -931,4 +945,33 @@ textarea:focus-visible,
   color: #052e16;
   font-weight: 700;
   pointer-events: auto;
+}
+
+.inspector-card .inspector-card__collapse {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.inspector-card .inspector-card__collapse .MuiCollapse-wrapper,
+.inspector-card .inspector-card__collapse .MuiCollapse-wrapperInner {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.inspector-action,
+.inspector-icon,
+.graph-legend__mode,
+.top-bar__control {
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

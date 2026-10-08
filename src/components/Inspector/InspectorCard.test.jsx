@@ -287,6 +287,33 @@ describe('inspector card interactions', () => {
   });
 });
 
+describe('inspector card motion', () => {
+  it('keeps the last selection on screen while the card animates out, then unmounts', () => {
+    vi.useFakeTimers();
+    try {
+      const root = mount(<Inspector {...baseProps} />);
+      act(() => {
+        ReactDOM.render(<Inspector {...baseProps} selectedNode={{}} />, container);
+      });
+
+      expect(root.querySelector('.inspector-card')).not.toBeNull();
+      expect(root.textContent).toContain('CosmosVisualizer');
+
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(root.querySelector('.inspector-card')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('animates the body when collapsing', () => {
+    const root = mount(<Inspector {...baseProps} />);
+    expect(root.querySelector('.inspector-card .MuiCollapse-container')).not.toBeNull();
+  });
+});
+
 describe('connected inspector card', () => {
   const makeStore = () => createStore(combineReducers({
     graph: graphReducer,
@@ -305,9 +332,17 @@ describe('connected inspector card', () => {
     const root = mount(<Provider store={store}><InspectorCard /></Provider>);
     expect(root.querySelector('.inspector-card')).not.toBeNull();
 
-    act(() => {
-      store.dispatch({ type: ACTIONS.CLEAR_GRAPH });
-    });
+    vi.useFakeTimers();
+    try {
+      act(() => {
+        store.dispatch({ type: ACTIONS.CLEAR_GRAPH });
+      });
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
 
     expect(root.querySelector('.inspector-card')).toBeNull();
   });
