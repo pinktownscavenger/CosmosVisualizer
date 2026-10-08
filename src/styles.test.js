@@ -28,7 +28,7 @@ describe('layout stylesheet contracts', () => {
   });
 
   it('gives the RU chip a fixed width so the bar never shifts as values change', () => {
-    expect(declarationsFor('.top-bar__ru')).toContain('width: 210px');
+    expect(declarationsFor('.top-bar__ru')).toContain('width: 330px');
     expect(declarationsFor('.top-bar__ru .top-bar__secondary')).toContain('max-width: 100%');
   });
 

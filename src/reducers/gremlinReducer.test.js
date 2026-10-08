@@ -86,4 +86,24 @@ describe('gremlin reducer', () => {
     const running = reducer(undefined, { type: ACTIONS.SET_QUERY_STATUS, payload: { status: 'running', message: 'Executing Gremlin traversal...' } });
     expect(reducer(running, { type: ACTIONS.SET_QUERY, payload: 'g.V()' }).queryStatus).toBe('running');
   });
+
+  it('tallies priced, unpriced and failed-but-charged operations for the session', () => {
+    let state = reducer(undefined, { type: '@@INIT' });
+    expect(state.session).toEqual({ total: 0, operations: 0, unpricedOperations: 0 });
+
+    state = reducer(state, { type: ACTIONS.SET_OPERATION_DIAGNOSTICS, payload: { operation: 'query', requestCharge: { total: 3.75 } } });
+    state = reducer(state, { type: ACTIONS.SET_OPERATION_DIAGNOSTICS, payload: { operation: 'query', requestCharge: null } });
+    state = reducer(state, { type: ACTIONS.SET_OPERATION_DIAGNOSTICS, payload: { operation: 'traverse-in', requestCharge: { total: 0.75 } } });
+
+    expect(state.session).toEqual({ total: 4.5, operations: 3, unpricedOperations: 1 });
+  });
+
+  it('resets the session on demand and after a successful switch, but not after a failed one', () => {
+    const charged = reducer(undefined, { type: ACTIONS.SET_OPERATION_DIAGNOSTICS, payload: { requestCharge: { total: 2 } } });
+    const zero = { total: 0, operations: 0, unpricedOperations: 0 };
+
+    expect(reducer(charged, { type: ACTIONS.RESET_SESSION_CHARGE }).session).toEqual(zero);
+    expect(reducer(charged, { type: ACTIONS.SWITCH_CONNECTION_SUCCESS, payload: {} }).session).toEqual(zero);
+    expect(reducer(charged, { type: ACTIONS.SWITCH_CONNECTION_FAILURE, payload: {} }).session.total).toBe(2);
+  });
 });

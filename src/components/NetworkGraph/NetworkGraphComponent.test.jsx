@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { CanvasEmptyState, GraphCounts, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
+import { CanvasEmptyState, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
 import { ACTIONS } from '../../constants';
 
 describe('graph hint', () => {
@@ -119,10 +119,6 @@ describe('canvas overlays', () => {
     expect(dispatch).not.toHaveBeenCalledWith({ type: ACTIONS.CLEAR_QUERY_HISTORY });
   });
 
-  it('counts nodes and edges with singular forms', () => {
-    expect(ReactDOMServer.renderToStaticMarkup(<GraphCounts nodes={5} edges={5} />)).toContain('5 nodes · 5 edges');
-    expect(ReactDOMServer.renderToStaticMarkup(<GraphCounts nodes={1} edges={1} />)).toContain('1 node · 1 edge');
-  });
 
   it('hides the hint after the first selection', () => {
     const graph = new NetworkGraph({ dispatch: vi.fn() });

@@ -1,13 +1,18 @@
 import { extractEdgesAndNodes, getDiffEdges, getDiffNodes } from './utils';
 import { ACTIONS } from '../constants';
 import { getQueryFailureFeedback } from './queryFeedback';
+import { styleNodes } from './nodeColors';
+
+const DEFAULT_ASSIGNMENTS = { type: {}, partition: {} };
 
 export const onFetchQuery = (result, query, oldNodeLabels, dispatch, current = { nodes: [], edges: [] }) => {
   if (result.diagnostics !== undefined) {
     dispatch({ type: ACTIONS.SET_OPERATION_DIAGNOSTICS, payload: result.diagnostics });
   }
   const { nodes, edges, nodeLabels } = extractEdgesAndNodes(result.data, oldNodeLabels);
-  dispatch({ type: ACTIONS.ADD_NODES, payload: nodes });
+  const styled = styleNodes(nodes, current.colorMode || 'type', current.colorAssignments || DEFAULT_ASSIGNMENTS);
+  dispatch({ type: ACTIONS.SET_COLOR_ASSIGNMENTS, payload: styled.colorAssignments });
+  dispatch({ type: ACTIONS.ADD_NODES, payload: styled.nodes });
   dispatch({ type: ACTIONS.ADD_EDGES, payload: edges });
   dispatch({ type: ACTIONS.SET_NODE_LABELS, payload: nodeLabels });
   dispatch({ type: ACTIONS.ADD_QUERY_HISTORY, payload: query });

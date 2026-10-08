@@ -215,7 +215,12 @@ class ConnectedInspector extends React.Component {
           direction,
           nodeLimit: this.props.nodeLimit,
           nodeLabels: this.props.nodeLabels,
-          current: { nodes: this.props.nodes, edges: this.props.edges },
+          current: {
+            nodes: this.props.nodes,
+            edges: this.props.edges,
+            colorMode: this.props.colorMode,
+            colorAssignments: this.props.colorAssignments
+          },
           dispatch
         })}
         onCenter={() => this.centerOn(this.props.selectedNode.id)}
@@ -242,6 +247,8 @@ export default connect((state) => ({
   collapsed: state.options.inspectorCollapsed,
   nodeLimit: state.options.nodeLimit,
   nodeLabels: state.options.nodeLabels,
+  colorMode: state.options.colorMode,
+  colorAssignments: state.options.colorAssignments,
   disabled: state.gremlin.queryStatus === 'running'
     || state.connection.loading
     || state.connection.switching

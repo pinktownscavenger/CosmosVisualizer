@@ -77,7 +77,7 @@ export const extractEdgesAndNodes = (nodeList, nodeLabels=[]) => {
   return { edges, nodes, nodeLabels: nextNodeLabels }
 };
 
-const escapeGremlinString = (value) => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+export const escapeGremlinString = (value) => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 // Mirrors the server's traversal so rerunning from history includes the origin node.
 export const makeTraversalHistoryQuery = (nodeId, direction) => {

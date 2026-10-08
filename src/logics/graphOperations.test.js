@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACTIONS, EMPTY_GREMLIN_QUERY_ERROR, TOO_LONG_GREMLIN_QUERY_ERROR } from '../constants';
 import { executeQuery, executeTraversal } from '../api/gremlinApi';
-import { getLastSubmittedQuery, retryLastOperation, runQuery, runTraversal } from './graphOperations';
+import { changeColorMode, getLastSubmittedQuery, retryLastOperation, runQuery, runTraversal, seedDemoGraph } from './graphOperations';
 import { normalizedGraph } from '../__fixtures__/graphFixtures';
 
 vi.mock('../api/gremlinApi', () => ({
@@ -166,5 +166,36 @@ describe('retryLastOperation', () => {
     await retryLastOperation({ nodeLimit: 100, nodeLabels: [], current: emptyGraph, dispatch: vi.fn() });
 
     expect(executeQuery).toHaveBeenCalledWith({ query: 'g.V().limit(4)', nodeLimit: 100 });
+  });
+});
+
+describe('colour helpers', () => {
+  it('switches mode, records assignments, then restyles every node once', () => {
+    const dispatch = vi.fn();
+    const nodes = [
+      { id: 'a', type: 'person', partition: { name: 'type', value: 'person' } },
+      { id: 'b', type: 'company', partition: { name: 'type', value: null } }
+    ];
+
+    changeColorMode({ mode: 'partition', nodes, colorAssignments: { type: { person: 0 }, partition: {} }, dispatch });
+
+    expect(dispatch.mock.calls.map(([action]) => action.type)).toEqual([
+      ACTIONS.SET_COLOR_MODE, ACTIONS.SET_COLOR_ASSIGNMENTS, ACTIONS.RESTYLE_NODES
+    ]);
+    const restyle = dispatch.mock.calls[2][0].payload;
+    expect(restyle.map(entry => entry.id)).toEqual(['a', 'b']);
+    expect(restyle[1].shapeProperties).toEqual({ borderDashes: [4, 3] });
+    expect(Object.keys(restyle[0])).toEqual(['id', 'color', 'shapeProperties']);
+  });
+
+  it('seeds the demo graph with styled nodes', () => {
+    const dispatch = vi.fn();
+
+    seedDemoGraph({ colorMode: 'type', colorAssignments: { type: {}, partition: {} }, dispatch });
+
+    const seed = dispatch.mock.calls.find(([action]) => action.type === ACTIONS.SEED_DEMO_GRAPH)[0].payload;
+    expect(seed.nodes).toHaveLength(5);
+    expect(seed.edges).toHaveLength(5);
+    expect(seed.nodes.filter(node => node.color.background === '#94a3b8')).toHaveLength(2);
   });
 });
