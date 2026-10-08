@@ -41,7 +41,7 @@ export class TopBar extends React.Component {
   scopeToPartition() {
     const selected = this.props.selectedNode;
     const value = selected && selected.partition && selected.partition.value != null
-      ? String(selected.partition.value)
+      ? selected.partition.value
       : '';
     const scoped = scopeQueryToPartition(
       this.props.query,

@@ -24,6 +24,11 @@ export const scopeQueryToPartition = (query, partitionKey, value) => {
     return null;
   }
 
+  // Numbers and booleans must stay unquoted or Cosmos compares them as strings and matches nothing.
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    const prefix = `${head}.has('${escapeGremlinString(key)}', ${String(value)}`;
+    return { query: `${prefix})${rest}`, cursor: prefix.length };
+  }
   const prefix = `${head}.has('${escapeGremlinString(key)}', '${escapeGremlinString(value || '')}`;
   return { query: `${prefix}')${rest}`, cursor: prefix.length };
 };

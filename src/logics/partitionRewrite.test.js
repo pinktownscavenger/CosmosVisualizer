@@ -40,4 +40,13 @@ describe('scopeQueryToPartition', () => {
   ])('returns null for %s with partition key %s', (query, partitionKey) => {
     expect(scopeQueryToPartition(query, partitionKey, '')).toBeNull();
   });
+
+  it.each([
+    [1843, "g.V().has('tenant', 1843).limit(2)", "g.V().has('tenant', 1843|).limit(2)"],
+    [true, "g.V().has('tenant', true).limit(2)", "g.V().has('tenant', true|).limit(2)"]
+  ])('inserts the typed partition value %s unquoted', (value, expected, caret) => {
+    const result = scopeQueryToPartition('g.V().limit(2)', 'tenant', value);
+    expect(result.query).toBe(expected);
+    expect(caretContext(result)).toBe(caret);
+  });
 });
