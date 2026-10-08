@@ -117,7 +117,8 @@ The partition-key setting accepts a property name such as `type` or `/type`. It 
 - One message line for status, partition fan-out advisories, and errors, with recovery actions such as **Edit query**, **Retry**, and **Switch connection**.
 - Full-width `vis-network` canvas with fit, zoom, center, reset, physics, and clear-graph controls.
 - A floating inspector card for the selected node or edge: partition chip, copyable id, traversal actions, unwrapped Cosmos property values, and a raw JSON view.
-- The selected node is kept clear of the inspector card when you select it or fit the view.
+- Center and Fit use the whole canvas; a node you select under the inspector card is moved to the middle so it stays visible.
+- Click a query in the history menu to load it back into the editor.
 - Node colours by **Type** or **Partition**, switched from the canvas legend. Three colour-blind-safe hues go to the first three keys; later keys share a neutral **Other**, and vertices whose partition value was not returned are drawn hollow and dashed.
 - A session RU total beside the last operation's charge. It runs from the current connection, resets on a successful switch, and resets when clicked.
 - **Scope to partition**: for an unscoped `g.V()` scan or an id lookup without its partition value, one click inserts `.has('<partition key>', '')` (pre-filled from the selected node when there is one) and places the cursor in the quotes. It never runs the query for you.
