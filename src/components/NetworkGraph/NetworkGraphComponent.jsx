@@ -260,6 +260,8 @@ export class NetworkGraph extends React.Component{
           colorMode={this.props.colorMode}
           modeAssignments={this.props.colorAssignments[this.props.colorMode]}
           collapsed={this.props.legendCollapsed}
+          // A result styled for the old mode would overwrite the new mode's assignments.
+          modeLocked={this.props.queryStatus === 'running'}
           onModeChange={mode => changeColorMode({
             mode,
             nodes: this.props.nodes,

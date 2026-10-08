@@ -67,4 +67,14 @@ describe('graph legend', () => {
     expect(root.querySelectorAll('.graph-legend__row')).toHaveLength(0);
     expect(root.textContent).toContain('0 nodes · 0 edges');
   });
+
+  it('locks the mode toggle while a graph operation is running', () => {
+    const onModeChange = vi.fn();
+    const root = mount(<GraphLegend {...baseProps} modeLocked={true} onModeChange={onModeChange} />);
+    const partition = [...root.querySelectorAll('button')].find(button => button.textContent === 'Partition');
+
+    expect(partition.disabled).toBe(true);
+    Simulate.click(partition);
+    expect(onModeChange).not.toHaveBeenCalled();
+  });
 });

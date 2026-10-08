@@ -373,6 +373,21 @@ describe('scope to partition', () => {
     expect(executeQuery).not.toHaveBeenCalled();
   });
 
+  it('pre-fills a numeric partition value unquoted', () => {
+    const dispatch = vi.fn();
+    const bar = new TopBar({
+      ...baseProps,
+      dispatch,
+      query: 'g.V()',
+      connection: { mode: 'cosmos', endpointHost: 'a', database: 'b', container: 'c', partitionKey: 'tenantId' },
+      selectedNode: { id: 'n', partition: { name: 'tenantId', value: 1843 } }
+    });
+
+    bar.onMessageAction('scope-partition');
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_QUERY, payload: "g.V().has('tenantId', 1843)" });
+  });
+
   it('leaves the value empty without a selected node', () => {
     const dispatch = vi.fn();
     const bar = new TopBar({ ...baseProps, dispatch, query: 'g.V()', selectedNode: {} });

@@ -13,7 +13,7 @@ const swatchStyle = (slot) => {
   return { background: entry.background, borderColor: entry.border };
 };
 
-export const GraphLegend = ({ nodes, edgeCount, colorMode, modeAssignments, collapsed, onModeChange, onToggleCollapsed }) => {
+export const GraphLegend = ({ nodes, edgeCount, colorMode, modeAssignments, collapsed, modeLocked, onModeChange, onToggleCollapsed }) => {
   const counts = `${pluralize(nodes.length, 'node')} · ${pluralize(edgeCount, 'edge')}`;
   if (collapsed) {
     return (
@@ -34,6 +34,8 @@ export const GraphLegend = ({ nodes, edgeCount, colorMode, modeAssignments, coll
               key={mode}
               type="button"
               aria-pressed={colorMode === mode}
+              disabled={modeLocked}
+              title={modeLocked ? 'Available when the current operation finishes' : undefined}
               className="graph-legend__mode"
               onClick={() => onModeChange(mode)}
             >
