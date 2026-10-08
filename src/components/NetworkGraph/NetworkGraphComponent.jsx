@@ -206,6 +206,7 @@ export class NetworkGraph extends React.Component{
       selectedNode: this.props.selectedNode,
       selectedEdge: this.props.selectedEdge,
       networkOptions: this.props.networkOptions
+    });
   }
 
   render(){
