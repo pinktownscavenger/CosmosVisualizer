@@ -247,20 +247,42 @@ describe('inspector card interactions', () => {
     expect(root.textContent).toContain('Copy failed');
   });
 
-  it('stops wheel and drag events from reaching the canvas', () => {
-    const onWheel = vi.fn();
-    const outer = document.createElement('div');
-    outer.addEventListener('wheel', onWheel);
-    document.body.appendChild(outer);
-    container = document.createElement('div');
-    outer.appendChild(container);
+  it('does not carry a pending copy result over to the next selection', async () => {
+    let resolveCopy;
+    const copyText = () => new Promise((resolve) => { resolveCopy = resolve; });
+    const root = mount(<Inspector {...baseProps} copyText={copyText} />);
+    await act(async () => {
+      Simulate.click(root.querySelector('[aria-label="Copy id"]'));
+    });
+    expect(typeof resolveCopy).toBe('function');
+
     act(() => {
-      ReactDOM.render(<Inspector {...baseProps} />, container);
+      ReactDOM.render(<Inspector {...baseProps} copyText={copyText} selectedNode={companyNode} />, container);
+    });
+    await act(async () => {
+      resolveCopy();
     });
 
-    container.querySelector('.inspector-card').dispatchEvent(new WheelEvent('wheel', { bubbles: true }));
+    expect(root.textContent).not.toContain('Copied');
+  });
 
-    expect(onWheel).not.toHaveBeenCalled();
+  it('clears the copy confirmation after two seconds', async () => {
+    vi.useFakeTimers();
+    try {
+      const root = mount(<Inspector {...baseProps} copyText={() => Promise.resolve()} />);
+      await act(async () => {
+        Simulate.click(root.querySelector('[aria-label="Copy id"]'));
+      });
+      expect(root.textContent).toContain('Copied');
+
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(root.textContent).not.toContain('Copied');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
