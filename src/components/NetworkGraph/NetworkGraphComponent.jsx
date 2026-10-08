@@ -40,6 +40,27 @@ export const GraphCounts = ({ nodes, edges }) => (
   </div>
 );
 
+export const CanvasEmptyState = ({ connectionStatus, loading, onConnect }) => {
+  if (loading) {
+    return null;
+  }
+  if (connectionStatus !== 'connected') {
+    return (
+      <div className="canvas-empty">
+        <p className="canvas-empty__title">Connect to Cosmos DB</p>
+        <p className="canvas-empty__hint">Choose a Gremlin account, database and container to explore.</p>
+        <button type="button" className="canvas-empty__action" onClick={onConnect}>Connect</button>
+      </div>
+    );
+  }
+  return (
+    <div className="canvas-empty">
+      <p className="canvas-empty__title">Run a query to load your graph</p>
+      <p className="canvas-empty__hint">Nothing runs until you ask, so no RUs are spent on startup.</p>
+    </div>
+  );
+};
+
 export const clearGraph = (dispatch) => {
   dispatch({ type: ACTIONS.CLEAR_GRAPH });
   dispatch({ type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS });
@@ -240,6 +261,16 @@ export class NetworkGraph extends React.Component{
         </div>
         <div ref={this.networkRef} className={'mynetwork'} />
         <GraphCounts nodes={this.props.nodeCount} edges={this.props.edgeCount} />
+        {this.props.nodeCount === 0 && this.props.queryStatus !== 'running' && (
+          <CanvasEmptyState
+            connectionStatus={this.props.connectionStatus}
+            loading={this.props.connectionLoading}
+            onConnect={() => {
+              this.props.dispatch({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
+              this.props.dispatch({ type: ACTIONS.OPEN_CONNECTION_DIALOG });
+            }}
+          />
+        )}
         <GraphHint
           visible={this.isHintVisible()}
           onDismiss={() => this.setState({ isHintDismissed: true })}
@@ -261,6 +292,8 @@ export const NetworkGraphComponent = connect((state)=>{
     networkOptions: state.options.networkOptions,
     nodeCount: state.graph.nodes.length,
     edgeCount: state.graph.edges.length,
-    queryStatus: state.gremlin.queryStatus
+    queryStatus: state.gremlin.queryStatus,
+    connectionStatus: state.connection.status,
+    connectionLoading: state.connection.loading
   };
 })(NetworkGraph);

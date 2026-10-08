@@ -29,7 +29,7 @@ export const getRequestChargeParts = (diagnostics) => {
     .filter(request => request && Number.isFinite(request.charge))
     .map(request => `${request.kind} ${formatCharge(request.charge)}`)
     .join(' + ');
-  const detail = [operationDirection(diagnostics.operation), breakdown].filter(Boolean).join(' · ');
+  const detail = [operationDirection(diagnostics.operation), breakdown].filter(Boolean).join(' · ') || 'total only';
   return { total: `${formatCharge(requestCharge.total)} RU`, detail };
 };
 

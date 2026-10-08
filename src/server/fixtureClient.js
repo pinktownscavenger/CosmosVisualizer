@@ -80,6 +80,46 @@ function getTraversalEdges(query) {
   return rawEdges;
 }
 
+const CLOSERS = { ')': '(', ']': '[', '}': '{' };
+
+// Mimics Cosmos rejecting malformed Gremlin so the client's edit-query recovery can be exercised.
+function findSyntaxError(query) {
+  const stack = [];
+  let quote = null;
+  for (let index = 0; index < query.length; index += 1) {
+    const char = query[index];
+    if (quote) {
+      if (char === '\\') {
+        index += 1;
+      } else if (char === quote) {
+        quote = null;
+      }
+    } else if (char === "'" || char === '"') {
+      quote = char;
+    } else if ('([{'.includes(char)) {
+      stack.push(char);
+    } else if (CLOSERS[char]) {
+      if (stack.pop() !== CLOSERS[char]) {
+        return `unexpected '${char}' at position ${index + 1}`;
+      }
+    }
+  }
+  if (quote) {
+    return 'unterminated string literal';
+  }
+  if (stack.length > 0) {
+    return `missing closing bracket for '${stack[stack.length - 1]}'`;
+  }
+  return null;
+}
+
+function syntaxError(detail) {
+  return Object.assign(
+    new Error(`ScriptEvaluationError: Gremlin Query Syntax Error: ${detail}`),
+    { statusCode: 597 }
+  );
+}
+
 function createFixtureClient() {
   let closed = false;
 
@@ -92,6 +132,11 @@ function createFixtureClient() {
     submit(query) {
       if (closed) {
         return Promise.reject(new Error('Fixture client is closed'));
+      }
+
+      const syntaxProblem = findSyntaxError(query);
+      if (syntaxProblem) {
+        return Promise.reject(syntaxError(syntaxProblem));
       }
 
       if (query === "g.V().has('type').limit(1)") {

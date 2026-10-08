@@ -58,4 +58,25 @@ describe('fixture Gremlin client', () => {
     await expect(client.submit('g.V()', {})).rejects.toThrow('Fixture client is closed');
     await expect(client.close()).resolves.toBeUndefined();
   });
+
+  it.each([
+    ["g.V().has('type', 'person'"],
+    ["g.V().has('name, 'Ada')"],
+    ["g.V()).limit(2)"]
+  ])('rejects %s as a Gremlin syntax error', async (query) => {
+    const client = createFixtureClient();
+
+    await expect(client.submit(query, {})).rejects.toMatchObject({
+      statusCode: 597,
+      message: expect.stringMatching(/Gremlin Query Syntax Error/)
+    });
+  });
+
+  it('accepts brackets and quotes inside string literals', async () => {
+    const client = createFixtureClient();
+
+    const result = await client.submit("g.V().has('name', 'O\\'Brien (x)').limit(2)", {});
+
+    expect(Array.isArray(result._items)).toBe(true);
+  });
 });

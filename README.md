@@ -12,7 +12,7 @@ CosmosVisualizer is a local React workspace for exploring Azure Cosmos DB Gremli
 
 ## Demo
 
-The fixture-mode demo shows the credential-free query path pulling a graph with `g.V().limit(25)`.
+The fixture-mode demo shows the credential-free query path pulling a graph with `g.V().limit(25)`. The recording predates the October 2026 workspace layout (top bar and floating inspector); the screenshots below show the current UI.
 
 ![Fixture-mode demo recording](.github/assets/cosmos-visualizer-demo.webp)
 
@@ -23,6 +23,10 @@ A source H.264 MP4 is also available:
 GitHub does not reliably render committed `.mp4` files inline in README files. For a native inline GitHub video player, upload `.github/assets/cosmos-visualizer-demo.mp4` through a GitHub issue, pull request, or README web-editor attachment flow, then paste the generated `https://github.com/user-attachments/assets/...` URL here on its own line.
 
 ## Screenshots
+
+### Workspace
+
+![Fixture workspace](.github/assets/cosmos-visualizer-overview.png)
 
 ### Fixture Query Result
 
@@ -47,11 +51,13 @@ Open:
 http://localhost:5173
 ```
 
-Run:
+Fixture mode seeds a small demo graph as soon as the page loads. Type a query into the top bar and press **Run** (or ⌘↵ / Ctrl+↵):
 
 ```groovy
 g.V().limit(25)
 ```
+
+Click a node to open the inspector card, then traverse from it.
 
 Fixture mode sets `USE_FIXTURE_DATA=true` for the proxy process. Do not use fixture mode when validating a real Cosmos DB connection.
 
@@ -97,24 +103,22 @@ npm start
 
 The proxy reads `.env` from the project root on startup. Variables already set in your shell take precedence, so `npm run start:fixture` still works with a `.env` that sets `USE_FIXTURE_DATA=false`.
 
-The Vite dev server runs on port `5173`; the API proxy defaults to port `3001`. Both listen on loopback only, so the proxy and your Cosmos key are not reachable from other machines on your network. Set `HOST` only if you deliberately need to expose the proxy. All five Cosmos variables are required for an automatic startup connection. If one is missing or invalid (for example an endpoint that is not a `wss://` URL), the server logs a warning, starts in disconnected mode, and the browser can establish a connection with the **Switch** action.
+The Vite dev server runs on port `5173`; the API proxy defaults to port `3001`. Both listen on loopback only, so the proxy and your Cosmos key are not reachable from other machines on your network. Set `HOST` only if you deliberately need to expose the proxy. All five Cosmos variables are required for an automatic startup connection. If one is missing or invalid (for example an endpoint that is not a `wss://` URL), the server logs a warning, starts in disconnected mode, and the browser can establish a connection from the connection chip at the left of the top bar.
 
 The partition-key setting accepts a property name such as `type` or `/type`. It is used for partition display, probe construction, and best-effort fan-out advisories; CosmosVisualizer does not infer it from the graph schema.
 
 ## Features
 
-- Credential-free startup with a seeded demo graph.
-- Fixture mode for pulling a sample graph with `g.V().limit(25)`.
+- Credential-free fixture mode with a seeded demo graph. Real Cosmos connections start empty and spend no RUs until you run a query.
 - Cosmos-native query proxy that keeps database credentials server-side.
 - In-app connection switching without restarting the local proxy.
+- A single top bar: connection chip, multi-line query editor (⌘↵ / Ctrl+↵ to run, ↑/↓ to recall history), history menu, RU readout, and settings.
 - Per-operation RU totals with vertex/edge request breakdowns when Cosmos returns charge metadata.
-- Vertex partition-key metadata in table and JSON inspectors.
-- Advisory warnings for query patterns and inbound traversals that may fan out across partitions.
-- Dark graph workspace with node and edge counters.
-- Interactive `vis-network` graph rendering with directed edge labels.
-- Query history, graph clearing, physics toggling, and node-limit controls.
+- One message line for status, partition fan-out advisories, and errors, with recovery actions such as **Edit query**, **Retry**, and **Switch connection**.
+- Full-width `vis-network` canvas with fit, zoom, center, reset, physics, and clear-graph controls.
+- A floating inspector card for the selected node or edge: partition chip, copyable id, traversal actions, unwrapped Cosmos property values, and a raw JSON view.
+- The selected node is kept clear of the inspector card when you select it or fit the view.
 - Configurable node display labels by vertex type and property field.
-- Selected-node and selected-edge inspection with traversal actions.
 
 ## How It Works
 
@@ -127,7 +131,9 @@ The browser posts `{ query, nodeLimit }` to `/query`. The proxy submits the vert
 
 One graph operation can make separate vertex and edge requests. CosmosVisualizer sums both charges for the displayed operation total and keeps the breakdown visible; missing provider metadata is reported as unavailable rather than zero. A successful connection switch clears graph data, selection, and the prior operation charge while preserving query text and history. A failed probe leaves the existing connection and graph untouched.
 
-In fixture mode, the proxy uses a deterministic in-memory client with stable request charges and `type` partition values. It exercises the same manager, query, traversal, and diagnostics paths without Azure credentials.
+In fixture mode, the proxy uses a deterministic in-memory client with stable request charges and `type` partition values. It exercises the same manager, query, traversal, and diagnostics paths without Azure credentials. It also rejects queries with unbalanced brackets or quotes the way Cosmos rejects malformed Gremlin, so error recovery can be tried locally.
+
+When Cosmos reports a Gremlin syntax or compilation error, the proxy returns `400 COSMOS_QUERY_REJECTED` and the UI offers **Edit query**; other Cosmos failures return `500` and offer **Retry**, which repeats the last query or traversal.
 
 ## Query Behavior
 
@@ -143,7 +149,7 @@ Normalized vertices retain their ordinary properties and also expose dedicated p
 
 ## Connection Switching And Credentials
 
-The compact header status shows `Fixture`, `Disconnected`, or the active Cosmos endpoint host, database, and container. Select **Switch** to enter an endpoint, primary key, database, container, and partition-key property. The server validates and probes the candidate before activating it.
+The connection chip at the left of the top bar shows `Fixture`, `Disconnected`, or the active Cosmos endpoint host, database, and container, with the partition-key property underneath. Select it to enter an endpoint, primary key, database, container, and partition-key property. The server validates and probes the candidate before activating it.
 
 Connection details entered in the UI are held only in memory for this local, single-user process. The primary key is sent once to the local proxy, is never placed in Redux, diagnostics, history, response payloads, or browser persistence, and is cleared from the modal after submission or dismissal. The active Gremlin driver necessarily retains authentication material in server process memory until that connection is replaced or the server stops.
 
@@ -211,7 +217,7 @@ node --check src/server/queryDiagnostics.js
 npm audit --omit=dev
 ```
 
-Then run `npm run start:fixture` and smoke test the Fixture status, deterministic RU totals, query advisories, partition values, graph rendering, item selection, query history, graph clearing, connection modal key clearing, and inbound/outbound traversal diagnostics in the browser.
+Then run `npm run start:fixture` and smoke test in the browser: the Fixture connection chip, the seeded graph, deterministic RU totals, the message line (status, advisories, and the **Edit query** recovery for a malformed query), the inspector card and its partition chip, history recall and the history menu, graph clearing, connection-dialog key clearing, and inbound/outbound traversal diagnostics.
 
 ## License
 

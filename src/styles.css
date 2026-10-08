@@ -4,6 +4,7 @@
   --color-surface-strong: #1e293b;
   --color-panel: #111827;
   --color-border: #334155;
+  --color-border-strong: #64748b;
   --color-border-soft: rgba(148, 163, 184, 0.22);
   --color-text: #f8fafc;
   --color-muted: #94a3b8;
@@ -512,7 +513,7 @@ textarea:focus-visible,
   min-height: 44px;
   margin: 0;
   padding: 11px 12px;
-  border: 1px solid #64748b;
+  border: 1px solid var(--color-border-strong);
   border-radius: 6px;
   background: #020617;
   color: var(--color-text);
@@ -774,4 +775,43 @@ textarea:focus-visible,
   background: rgba(17, 24, 39, 0.8);
   color: var(--color-muted);
   font-size: 0.75rem;
+}
+
+.canvas-empty {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 360px;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.canvas-empty__title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.canvas-empty__hint {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.canvas-empty__action {
+  margin-top: 8px;
+  padding: 7px 16px;
+  border: 1px solid var(--color-accent);
+  border-radius: 6px;
+  background: var(--color-accent);
+  color: #052e16;
+  font-weight: 700;
+  pointer-events: auto;
 }
