@@ -6,7 +6,6 @@ export const CONNECTION_ENDPOINT = `${SERVER_URL}/connection`;
 export const COMMON_GREMLIN_ERROR = 'Invalid query. Please execute a query to get a set of vertices';
 export const EMPTY_GREMLIN_QUERY_ERROR = 'Enter a Gremlin query before executing.';
 export const TOO_LONG_GREMLIN_QUERY_ERROR = `Gremlin query is too long. Keep traversals under ${MAX_QUERY_LENGTH} characters before sending them to Cosmos.`;
-export const INSPECTOR_INSET = 384;
 export const QUERY_RUNNING_MESSAGE = 'Executing Gremlin traversal...';
 export const ACTIONS = {
   SET_QUERY: 'SET_QUERY',

@@ -609,7 +609,6 @@ textarea:focus-visible,
   width: 44px;
   padding: 0;
   align-items: center;
-  font-size: 1rem;
 }
 
 .message-line {
@@ -666,15 +665,20 @@ textarea:focus-visible,
   list-style: none;
 }
 
-.history-menu__item {
+.history-menu__entry {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  transition: background-color 120ms ease;
 }
 
-.history-menu__item:hover {
+.history-menu__entry:hover,
+.history-menu__entry:focus-visible {
   background: var(--color-surface-strong);
 }
 
@@ -689,7 +693,6 @@ textarea:focus-visible,
   white-space: nowrap;
 }
 
-.history-menu__action,
 .history-menu__clear,
 .settings-panel__button,
 .settings-panel__remove {
@@ -699,11 +702,6 @@ textarea:focus-visible,
   background: transparent;
   color: #cbd5e1;
   font-size: 0.75rem;
-}
-
-.history-menu__action:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
 }
 
 .history-menu__clear {
@@ -813,14 +811,23 @@ textarea:focus-visible,
 }
 
 .graph-legend--collapsed {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
+  gap: 0;
   min-width: 0;
   padding: 3px 4px 3px 9px;
 }
 
-.graph-legend__header {
+.graph-legend__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+
+.graph-legend__toggle {
+  align-self: flex-start;
+}
+
+.graph-legend__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -858,6 +865,11 @@ textarea:focus-visible,
   background: none;
   color: var(--color-muted);
   font-size: 0.75rem;
+  transition: transform 200ms ease;
+}
+
+.graph-legend__chevron--collapsed {
+  transform: rotate(180deg);
 }
 
 .graph-legend__rows {
@@ -933,4 +945,33 @@ textarea:focus-visible,
   color: #052e16;
   font-weight: 700;
   pointer-events: auto;
+}
+
+.inspector-card .inspector-card__collapse {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.inspector-card .inspector-card__collapse .MuiCollapse-wrapper,
+.inspector-card .inspector-card__collapse .MuiCollapse-wrapperInner {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.inspector-action,
+.inspector-icon,
+.graph-legend__mode,
+.top-bar__control {
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

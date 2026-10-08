@@ -10,15 +10,6 @@ export const getSelectedGraphItemId = (selectedNode, selectedEdge) => {
   return null;
 };
 
-export const getVisibleCenterOffset = (insetRight) => ({ x: insetRight ? -insetRight / 2 : 0, y: 0 });
-
-export const getFitScale = (currentScale, canvasWidth, insetRight) => {
-  if (!insetRight || !canvasWidth) {
-    return currentScale;
-  }
-  return currentScale * (canvasWidth - insetRight) / canvasWidth;
-};
-
 // Dynamic curves need physics to place their support points; paused physics falls back to continuous.
 const liveEdges = { smooth: { type: 'dynamic' } };
 const pausedEdges = { smooth: { type: 'continuous' } };
@@ -28,21 +19,8 @@ export const applyGraphControl = (network, command, context = {}) => {
     return;
   }
 
-  const insetRight = context.insetRight || 0;
-
   if (command === 'fit') {
-    if (!insetRight) {
-      network.fit({ animation: ANIMATION });
-      return;
-    }
-    network.fit({ animation: false });
-    const canvasWidth = network.body && network.body.container ? network.body.container.clientWidth : 0;
-    network.moveTo({
-      position: network.getViewPosition(),
-      scale: getFitScale(network.getScale(), canvasWidth, insetRight),
-      offset: getVisibleCenterOffset(insetRight),
-      animation: ANIMATION
-    });
+    network.fit({ animation: ANIMATION });
     return;
   }
 
@@ -56,11 +34,7 @@ export const applyGraphControl = (network, command, context = {}) => {
   if (command === 'center-selection') {
     const selectedNodeId = context.selectedNode && context.selectedNode.id;
     if (selectedNodeId !== undefined) {
-      const focusOptions = { animation: ANIMATION, scale: 1.1 };
-      if (insetRight) {
-        focusOptions.offset = getVisibleCenterOffset(insetRight);
-      }
-      network.focus(selectedNodeId, focusOptions);
+      network.focus(selectedNodeId, { animation: ANIMATION, scale: 1.1 });
       return;
     }
     network.fit({ animation: ANIMATION });

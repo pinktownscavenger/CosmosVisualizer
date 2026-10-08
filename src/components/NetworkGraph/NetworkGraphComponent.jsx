@@ -1,7 +1,8 @@
 import React from 'react';
 import {connect} from 'react-redux';
 import vis from 'vis-network';
-import { IconButton, Tooltip } from '@material-ui/core';
+import { Fade, IconButton, Tooltip } from '@material-ui/core';
+import { motionTimeout } from '../../logics/motion';
 import CenterFocusStrongIcon from '@material-ui/icons/CenterFocusStrong';
 import FullscreenIcon from '@material-ui/icons/Fullscreen';
 import PauseCircleFilledIcon from '@material-ui/icons/PauseCircleFilled';
@@ -11,18 +12,14 @@ import ZoomInIcon from '@material-ui/icons/ZoomIn';
 import ZoomOutIcon from '@material-ui/icons/ZoomOut';
 import CloseIcon from '@material-ui/icons/Close';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
-import { ACTIONS, INSPECTOR_INSET } from '../../constants';
-import { applyGraphControl, getVisibleCenterOffset } from '../../logics/graphControls';
+import { ACTIONS } from '../../constants';
+import { applyGraphControl } from '../../logics/graphControls';
 import InspectorCard from '../Inspector/InspectorCard';
 import { GraphLegend } from './GraphLegend';
 import { changeColorMode } from '../../logics/graphOperations';
 
-export const GraphHint = ({ visible, onDismiss }) => {
-  if (!visible) {
-    return null;
-  }
-
-  return (
+export const GraphHint = ({ visible, onDismiss }) => (
+  <Fade in={visible} timeout={motionTimeout(200)} unmountOnExit>
     <div className="graph-hint">
       <span>Click a node or edge to inspect it, then traverse from the selected node.</span>
       <Tooltip title="Dismiss hint">
@@ -31,8 +28,8 @@ export const GraphHint = ({ visible, onDismiss }) => {
         </IconButton>
       </Tooltip>
     </div>
-  );
-};
+  </Fade>
+);
 
 export const CanvasEmptyState = ({ connectionStatus, loading, onConnect }) => {
   if (loading) {
@@ -64,41 +61,86 @@ export const clearGraph = (dispatch) => {
   });
 };
 
-export const refreshNetworkNodeMeasurementsAfterFonts = (network, fontSet) => {
-  const browserFonts = typeof document !== 'undefined' ? document.fonts : undefined;
-  const fonts = fontSet || browserFonts;
-  const fontReady = fonts && fonts.ready ? fonts.ready : Promise.resolve();
+const GRAPH_FONT = '12px "JetBrains Mono"';
 
-  return fontReady.then(() => {
-    if (!network) {
-      return;
+// Re-setting each label marks it dirty so vis-network measures it again; needsRefresh() alone
+// only resizes the shape around the cached label width.
+const remeasureNodes = (network) => {
+  const dataSet = network && network.body && network.body.data && network.body.data.nodes;
+  if (!dataSet) {
+    return;
+  }
+  // An update without color makes vis-network fall back to group defaults, so carry the palette style.
+  const labels = dataSet.get().map(({ id, label, color, shapeProperties }) => {
+    const item = { id, label };
+    if (color !== undefined) {
+      item.color = color;
     }
-
-    Object.values(network.body && network.body.nodes ? network.body.nodes : {}).forEach((node) => {
-      if (node && typeof node.needsRefresh === 'function') {
-        node.needsRefresh();
-      }
-    });
-
-    if (typeof network.redraw === 'function') {
-      network.redraw();
+    if (shapeProperties !== undefined) {
+      item.shapeProperties = shapeProperties;
     }
+    return item;
   });
+  if (labels.length > 0) {
+    dataSet.update(labels);
+  }
+  if (typeof network.redraw === 'function') {
+    network.redraw();
+  }
 };
 
-export const keepNodeClearOfInspector = (network, nodeId, insetRight) => {
-  if (!network || !insetRight) {
+// vis-network measures a label once, when its node is added. A node added before JetBrains Mono
+// arrives keeps fallback-font metrics (the Production box drew its text off-centre), so request
+// the font explicitly and re-measure whenever font loading finishes.
+export const watchFontsForNetwork = (network, fontSet) => {
+  const fonts = fontSet === undefined && typeof document !== 'undefined' ? document.fonts : fontSet;
+  const onLoadingDone = () => remeasureNodes(network);
+  if (fonts && typeof fonts.addEventListener === 'function') {
+    fonts.addEventListener('loadingdone', onLoadingDone);
+  }
+  const request = fonts && typeof fonts.load === 'function' ? fonts.load(GRAPH_FONT) : Promise.resolve();
+  const ready = Promise.resolve(request).catch(() => {}).then(onLoadingDone);
+  return {
+    ready,
+    stop: () => {
+      if (fonts && typeof fonts.removeEventListener === 'function') {
+        fonts.removeEventListener('loadingdone', onLoadingDone);
+      }
+    }
+  };
+};
+
+const CARD_CLEARANCE = 24;
+
+// Only nodes actually hidden by the card (plus a small margin) are moved, and they go to the canvas centre.
+export const keepNodeClearOfInspector = (network, nodeId, cardRect) => {
+  if (!network || !cardRect) {
     return;
   }
   const position = network.getPositions([nodeId])[nodeId];
   if (!position) {
     return;
   }
-  const canvasWidth = network.body && network.body.container ? network.body.container.clientWidth : 0;
-  if (network.canvasToDOM(position).x <= canvasWidth - insetRight) {
-    return;
+  const { x, y } = network.canvasToDOM(position);
+  const covered = x >= cardRect.left - CARD_CLEARANCE && x <= cardRect.right + CARD_CLEARANCE
+    && y >= cardRect.top - CARD_CLEARANCE && y <= cardRect.bottom + CARD_CLEARANCE;
+  if (covered) {
+    network.moveTo({ position, animation: true });
   }
-  network.moveTo({ position, offset: getVisibleCenterOffset(insetRight), animation: true });
+};
+
+// Layout box of the card inside the canvas; offset* ignores the card's enter animation transform.
+const inspectorCardRect = (workspace) => {
+  const card = workspace && workspace.querySelector('.inspector-card');
+  if (!card) {
+    return null;
+  }
+  return {
+    left: card.offsetLeft,
+    top: card.offsetTop,
+    right: card.offsetLeft + card.offsetWidth,
+    bottom: card.offsetTop + card.offsetHeight
+  };
 };
 
 // vis-network has no event for clicking empty canvas, so clear the selection on a bare click.
@@ -127,7 +169,7 @@ export class NetworkGraph extends React.Component{
     };
     const network = new vis.Network(this.networkRef.current, data, this.props.networkOptions);
     this.network = network;
-    refreshNetworkNodeMeasurementsAfterFonts(network);
+    this.fontWatcher = watchFontsForNetwork(network);
 
     network.on('stabilized', () => {
       network.stopSimulation();
@@ -138,7 +180,7 @@ export class NetworkGraph extends React.Component{
       this.props.dispatch({ type: ACTIONS.SET_SELECTED_NODE, payload: nodeId });
       this.markSelected();
       if (nodeId !== null) {
-        keepNodeClearOfInspector(network, nodeId, INSPECTOR_INSET);
+        keepNodeClearOfInspector(network, nodeId, inspectorCardRect(this.networkRef.current && this.networkRef.current.parentNode));
       }
     });
 
@@ -157,6 +199,9 @@ export class NetworkGraph extends React.Component{
   }
 
   componentWillUnmount() {
+    if (this.fontWatcher) {
+      this.fontWatcher.stop();
+    }
     if (this.network) {
       this.network.destroy();
     }
@@ -187,14 +232,8 @@ export class NetworkGraph extends React.Component{
     applyGraphControl(network, command, {
       selectedNode: this.props.selectedNode,
       selectedEdge: this.props.selectedEdge,
-      networkOptions: this.props.networkOptions,
-      insetRight: this.isInspectorOpen() ? INSPECTOR_INSET : 0
+      networkOptions: this.props.networkOptions
     });
-  }
-
-  isInspectorOpen() {
-    const hasItem = (selection) => Boolean(selection && Object.keys(selection).length > 0);
-    return hasItem(this.props.selectedNode) || hasItem(this.props.selectedEdge);
   }
 
   render(){
