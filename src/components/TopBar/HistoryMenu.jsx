@@ -1,7 +1,7 @@
 import React from 'react';
 import { Popover } from '@material-ui/core';
 
-export const HistoryList = ({ queries, disabled, onRun, onLoad, onClear }) => {
+export const HistoryList = ({ queries, onLoad, onClear }) => {
   if (queries.length === 0) {
     return <p className="history-menu__empty">No queries yet</p>;
   }
@@ -10,25 +10,16 @@ export const HistoryList = ({ queries, disabled, onRun, onLoad, onClear }) => {
   return (
     <div className="history-menu">
       <ul className="history-menu__list">
-        {newestFirst.map(({ query, index }, position) => (
-          <li key={`${index}-${query}`} className="history-menu__item">
-            <code className="history-menu__query" title={query}>{query}</code>
+        {newestFirst.map(({ query, index }) => (
+          <li key={`${index}-${query}`}>
             <button
               type="button"
-              className="history-menu__action"
-              disabled={disabled}
-              aria-label={`Run query ${position + 1}`}
-              onClick={() => onRun(query)}
-            >
-              Run
-            </button>
-            <button
-              type="button"
-              className="history-menu__action"
-              aria-label={`Load query ${position + 1}`}
+              className="history-menu__entry"
+              title={query}
+              aria-label={`Load query into editor: ${query}`}
               onClick={() => onLoad(query)}
             >
-              Load
+              <code className="history-menu__query">{query}</code>
             </button>
           </li>
         ))}
@@ -49,7 +40,7 @@ export class HistoryMenu extends React.Component {
   }
 
   render() {
-    const { queries, disabled, onRun, onLoad, onClear } = this.props;
+    const { queries, onLoad, onClear } = this.props;
     return (
       <>
         <button
@@ -71,8 +62,6 @@ export class HistoryMenu extends React.Component {
         >
           <HistoryList
             queries={queries}
-            disabled={disabled}
-            onRun={(query) => { this.close(); onRun(query); }}
             onLoad={(query) => { this.close(); onLoad(query); }}
             onClear={onClear}
           />
