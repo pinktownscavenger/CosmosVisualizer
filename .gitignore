@@ -10,3 +10,4 @@ pvt/
 .env.*.local
 build
 dist
+.superpowers/
