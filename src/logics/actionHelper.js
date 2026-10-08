@@ -1,8 +1,8 @@
-import { extractEdgesAndNodes } from './utils';
+import { extractEdgesAndNodes, getDiffEdges, getDiffNodes } from './utils';
 import { ACTIONS } from '../constants';
 import { getQueryFailureFeedback } from './queryFeedback';
 
-export const onFetchQuery = (result, query, oldNodeLabels, dispatch) => {
+export const onFetchQuery = (result, query, oldNodeLabels, dispatch, current = { nodes: [], edges: [] }) => {
   if (result.diagnostics !== undefined) {
     dispatch({ type: ACTIONS.SET_OPERATION_DIAGNOSTICS, payload: result.diagnostics });
   }
@@ -11,7 +11,14 @@ export const onFetchQuery = (result, query, oldNodeLabels, dispatch) => {
   dispatch({ type: ACTIONS.ADD_EDGES, payload: edges });
   dispatch({ type: ACTIONS.SET_NODE_LABELS, payload: nodeLabels });
   dispatch({ type: ACTIONS.ADD_QUERY_HISTORY, payload: query });
-  return { nodes: nodes.length, edges: edges.length };
+  const uniqueNodes = getDiffNodes(nodes, []);
+  const uniqueEdges = getDiffEdges(edges, []);
+  return {
+    nodes: uniqueNodes.length,
+    edges: uniqueEdges.length,
+    newNodes: getDiffNodes(uniqueNodes, current.nodes || []).length,
+    newEdges: getDiffEdges(uniqueEdges, current.edges || []).length
+  };
 };
 
 export const onGraphRequestFailure = (error, dispatch) => {
@@ -20,6 +27,13 @@ export const onGraphRequestFailure = (error, dispatch) => {
   }
 
   const feedback = getQueryFailureFeedback(error);
-  dispatch({ type: ACTIONS.SET_ERROR, payload: `${feedback.title}. ${feedback.message}` });
+  dispatch({
+    type: ACTIONS.SET_ERROR,
+    payload: {
+      message: `${feedback.title}. ${feedback.message}`,
+      action: feedback.action,
+      actionLabel: feedback.actionLabel
+    }
+  });
   return feedback;
 };

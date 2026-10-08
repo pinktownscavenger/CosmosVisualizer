@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { GraphHint, handleCanvasClick, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
+import { GraphCounts, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
 import { ACTIONS } from '../../constants';
 
 describe('graph hint', () => {
@@ -69,5 +69,67 @@ describe('canvas click selection handling', () => {
     handleCanvasClick(params, dispatch);
 
     expect(dispatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('keeping the selection clear of the inspector', () => {
+  const makeNetwork = (domX) => ({
+    getPositions: vi.fn(() => ({ 'node-1': { x: 50, y: 60 } })),
+    canvasToDOM: vi.fn(() => ({ x: domX, y: 100 })),
+    moveTo: vi.fn(),
+    body: { container: { clientWidth: 1400 } }
+  });
+
+  it('pans a node that sits under the inspector into the visible region', () => {
+    const network = makeNetwork(1200);
+
+    keepNodeClearOfInspector(network, 'node-1', 384);
+
+    expect(network.moveTo).toHaveBeenCalledWith({
+      position: { x: 50, y: 60 },
+      offset: { x: -192, y: 0 },
+      animation: true
+    });
+  });
+
+  it('leaves a visible node where it is', () => {
+    const network = makeNetwork(400);
+
+    keepNodeClearOfInspector(network, 'node-1', 384);
+
+    expect(network.moveTo).not.toHaveBeenCalled();
+  });
+
+  it('ignores missing networks and positions', () => {
+    expect(() => keepNodeClearOfInspector(null, 'node-1', 384)).not.toThrow();
+    const network = { ...makeNetwork(1200), getPositions: vi.fn(() => ({})) };
+    keepNodeClearOfInspector(network, 'node-1', 384);
+    expect(network.moveTo).not.toHaveBeenCalled();
+  });
+});
+
+describe('canvas overlays', () => {
+  it('clears the graph and its diagnostics without clearing query history', () => {
+    const dispatch = vi.fn();
+
+    clearGraph(dispatch);
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.CLEAR_GRAPH });
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS });
+    expect(dispatch).not.toHaveBeenCalledWith({ type: ACTIONS.CLEAR_QUERY_HISTORY });
+  });
+
+  it('counts nodes and edges with singular forms', () => {
+    expect(ReactDOMServer.renderToStaticMarkup(<GraphCounts nodes={5} edges={5} />)).toContain('5 nodes · 5 edges');
+    expect(ReactDOMServer.renderToStaticMarkup(<GraphCounts nodes={1} edges={1} />)).toContain('1 node · 1 edge');
+  });
+
+  it('hides the hint after the first selection', () => {
+    const graph = new NetworkGraph({ dispatch: vi.fn() });
+    expect(graph.isHintVisible()).toBe(true);
+
+    graph.state = { ...graph.state, hasSelectedOnce: true };
+
+    expect(graph.isHintVisible()).toBe(false);
   });
 });

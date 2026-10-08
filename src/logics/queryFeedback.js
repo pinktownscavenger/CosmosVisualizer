@@ -18,6 +18,7 @@ export const getQueryFailureFeedback = (error = {}) => {
       status: 'error',
       title: 'Another Cosmos operation is running',
       message: 'Wait for the active query or connection switch to finish, then retry.',
+      action: 'wait-and-retry',
       actionLabel: 'Wait and retry'
     };
   }
@@ -27,6 +28,7 @@ export const getQueryFailureFeedback = (error = {}) => {
       status: 'error',
       title: 'Connect to Cosmos DB',
       message: 'Choose a Cosmos DB connection before running this traversal.',
+      action: 'switch-connection',
       actionLabel: 'Switch connection'
     };
   }
@@ -36,6 +38,7 @@ export const getQueryFailureFeedback = (error = {}) => {
       status: 'error',
       title: 'Query needs an edit',
       message: 'Cosmos DB for Gremlin rejected the traversal before it ran.',
+      action: 'edit-query',
       actionLabel: 'Edit query'
     };
   }
@@ -45,6 +48,7 @@ export const getQueryFailureFeedback = (error = {}) => {
       status: 'error',
       title: 'Query is too large',
       message: `Keep Gremlin traversals under ${MAX_QUERY_LENGTH} characters before sending them to Cosmos.`,
+      action: 'reduce-query',
       actionLabel: 'Reduce query'
     };
   }
@@ -54,6 +58,7 @@ export const getQueryFailureFeedback = (error = {}) => {
       status: 'error',
       title: 'Cannot reach the Cosmos proxy',
       message: 'The browser could not reach the local Cosmos graph proxy. Check that the server is running, then retry.',
+      action: 'check-server',
       actionLabel: 'Check server'
     };
   }
@@ -63,7 +68,8 @@ export const getQueryFailureFeedback = (error = {}) => {
       status: 'error',
       title: 'Cosmos graph query failed',
       message: 'Cosmos or the graph proxy failed while running the traversal. Retry, or check the proxy logs for connection details.',
-      actionLabel: 'Retry query'
+      action: 'retry',
+      actionLabel: 'Retry'
     };
   }
 
@@ -71,11 +77,14 @@ export const getQueryFailureFeedback = (error = {}) => {
     status: 'error',
     title: 'Query failed',
     message: 'The traversal could not be completed. Check the query and try again.',
-    actionLabel: 'Try again'
+    action: 'retry',
+    actionLabel: 'Retry'
   };
 };
 
-export const getQueryResultStatus = ({ nodes, edges }) => {
+const pluralize = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+export const getQueryResultStatus = ({ nodes, edges, newNodes = 0, newEdges = 0 }) => {
   if (nodes === 0 && edges === 0) {
     return {
       status: 'empty',
@@ -83,10 +92,9 @@ export const getQueryResultStatus = ({ nodes, edges }) => {
     };
   }
 
-  const nodeLabel = nodes === 1 ? 'node' : 'nodes';
-  const edgeLabel = edges === 1 ? 'edge' : 'edges';
+  const newCount = newNodes + newEdges;
   return {
     status: 'success',
-    message: `Query complete. Added ${nodes} ${nodeLabel} and ${edges} ${edgeLabel}.`
+    message: `${pluralize(nodes, 'node')}, ${pluralize(edges, 'edge')} · ${newCount > 0 ? `${newCount} new` : 'nothing new'}`
   };
 };
