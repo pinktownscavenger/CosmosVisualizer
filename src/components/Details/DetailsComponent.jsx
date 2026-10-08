@@ -32,10 +32,8 @@ import ArrowForwardIcon from '@material-ui/icons/ArrowForward';
 import CloseIcon from '@material-ui/icons/Close';
 import { JsonToTable } from 'react-json-to-table';
 import { ACTIONS } from '../../constants';
-import { executeQuery, executeTraversal } from '../../api/gremlinApi';
-import { onFetchQuery, onGraphRequestFailure } from '../../logics/actionHelper';
-import { getQueryResultStatus } from '../../logics/queryFeedback';
-import { makeTraversalHistoryQuery, stringifyObjectValues } from '../../logics/utils';
+import { runQuery, runTraversal } from '../../logics/graphOperations';
+import { stringifyObjectValues } from '../../logics/utils';
 import { getSelectedResultPayload } from '../../logics/selectedResult';
 
 export const QueryHistoryList = ({ queries, disabled, onRunQuery, onLoadQuery, onClearHistory }) => {
@@ -234,22 +232,13 @@ export class Details extends React.Component {
   }
 
   onTraverse(nodeId, direction) {
-    const query = makeTraversalHistoryQuery(nodeId, direction);
-    this.props.dispatch({
-      type: ACTIONS.SET_QUERY_STATUS,
-      payload: { status: 'running', message: `Traversing ${direction === 'in' ? 'inbound' : 'outbound'} edges...` }
-    });
-    return executeTraversal({ nodeId, direction, nodeLimit: this.props.nodeLimit }).then((response) => {
-      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch, {
-        nodes: this.props.nodes,
-        edges: this.props.edges
-      });
-      this.props.dispatch({
-        type: ACTIONS.SET_QUERY_STATUS,
-        payload: getQueryResultStatus(summary)
-      });
-    }).catch((error) => {
-      onGraphRequestFailure(error, this.props.dispatch);
+    return runTraversal({
+      nodeId,
+      direction,
+      nodeLimit: this.props.nodeLimit,
+      nodeLabels: this.props.nodeLabels,
+      current: { nodes: this.props.nodes, edges: this.props.edges },
+      dispatch: this.props.dispatch
     });
   }
 
@@ -283,21 +272,12 @@ export class Details extends React.Component {
 
   onRunQuery(query) {
     this.props.dispatch({ type: ACTIONS.SET_QUERY, payload: query });
-    this.props.dispatch({
-      type: ACTIONS.SET_QUERY_STATUS,
-      payload: { status: 'running', message: 'Executing Gremlin traversal...' }
-    });
-    return executeQuery({ query, nodeLimit: this.props.nodeLimit }).then((response) => {
-      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch, {
-        nodes: this.props.nodes,
-        edges: this.props.edges
-      });
-      this.props.dispatch({
-        type: ACTIONS.SET_QUERY_STATUS,
-        payload: getQueryResultStatus(summary)
-      });
-    }).catch((error) => {
-      onGraphRequestFailure(error, this.props.dispatch);
+    return runQuery({
+      query,
+      nodeLimit: this.props.nodeLimit,
+      nodeLabels: this.props.nodeLabels,
+      current: { nodes: this.props.nodes, edges: this.props.edges },
+      dispatch: this.props.dispatch
     });
   }
 
