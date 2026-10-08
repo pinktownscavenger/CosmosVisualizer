@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import { CircularProgress } from '@material-ui/core';
 import { ACTIONS } from '../../constants';
 import { getConnection, switchConnection as requestConnectionSwitch } from '../../api/gremlinApi';
-import { retryLastOperation, runQuery } from '../../logics/graphOperations';
+import { retryLastOperation, runQuery, seedDemoGraph } from '../../logics/graphOperations';
 import { getMessageLine } from '../../logics/messageLine';
 import { stepHistory } from '../../logics/queryHistory';
 import { applyGraphControl } from '../../logics/graphControls';
@@ -30,7 +30,11 @@ export class TopBar extends React.Component {
   componentDidMount() {
     return this.loadConnection().then((payload) => {
       if (payload && payload.connection && payload.connection.mode === 'fixture') {
-        this.props.dispatch({ type: ACTIONS.SEED_DEMO_GRAPH });
+        seedDemoGraph({
+          colorMode: this.props.colorMode,
+          colorAssignments: this.props.colorAssignments,
+          dispatch: this.props.dispatch
+        });
       }
     });
   }
@@ -88,6 +92,15 @@ export class TopBar extends React.Component {
     return this.props.queryStatus === 'running' || this.props.connectionLoading || this.props.connectionSwitching;
   }
 
+  currentGraph() {
+    return {
+      nodes: this.props.nodes,
+      edges: this.props.edges,
+      colorMode: this.props.colorMode,
+      colorAssignments: this.props.colorAssignments
+    };
+  }
+
   graphActionsDisabled() {
     return this.props.queryStatus === 'running'
       || this.props.connectionLoading
@@ -100,7 +113,7 @@ export class TopBar extends React.Component {
       query,
       nodeLimit: this.props.nodeLimit,
       nodeLabels: this.props.nodeLabels,
-      current: { nodes: this.props.nodes, edges: this.props.edges },
+      current: this.currentGraph(),
       dispatch: this.props.dispatch
     });
   }
@@ -149,7 +162,7 @@ export class TopBar extends React.Component {
       return retryLastOperation({
         nodeLimit: this.props.nodeLimit,
         nodeLabels: this.props.nodeLabels,
-        current: { nodes: this.props.nodes, edges: this.props.edges },
+        current: this.currentGraph(),
         dispatch: this.props.dispatch,
         fallbackQuery: this.props.query
       });
@@ -279,6 +292,8 @@ export default connect((state) => ({
   nodeLimit: state.options.nodeLimit,
   queryHistory: state.options.queryHistory,
   historyCursor: state.options.historyCursor,
+  colorMode: state.options.colorMode,
+  colorAssignments: state.options.colorAssignments,
   isPhysicsEnabled: state.options.isPhysicsEnabled,
   networkOptions: state.options.networkOptions,
   connectionStatus: state.connection.status,

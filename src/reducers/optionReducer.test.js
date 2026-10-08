@@ -105,12 +105,6 @@ describe('option reducer', () => {
     expect(reducer(cycling, { type: ACTIONS.CLEAR_QUERY_HISTORY }).historyCursor).toBeNull();
   });
 
-  it('draws tag nodes in neutral slate so red only signals errors', () => {
-    const tagGroup = reducer(undefined, { type: 'UNKNOWN' }).networkOptions.groups.tag;
-
-    expect(tagGroup.color).toEqual({ background: '#334155', border: '#94a3b8' });
-    expect(tagGroup.font.color).toBe('#f1f5f9');
-  });
 
   it('keeps edge labels legible with background pills and dynamic curves', () => {
     const { edges } = reducer(undefined, { type: 'UNKNOWN' }).networkOptions;
@@ -118,5 +112,39 @@ describe('option reducer', () => {
     expect(edges.font.background).toBe('rgba(11, 17, 32, 0.92)');
     expect(edges.font.strokeWidth).toBe(0);
     expect(edges.smooth).toEqual({ type: 'dynamic' });
+  });
+
+  it('defaults to type colouring with empty assignments and an open legend', () => {
+    const state = reducer(undefined, { type: 'UNKNOWN' });
+    expect(state.colorMode).toBe('type');
+    expect(state.colorAssignments).toEqual({ type: {}, partition: {} });
+    expect(state.legendCollapsed).toBe(false);
+  });
+
+  it('stores colour mode, assignments and legend collapse', () => {
+    let state = reducer(undefined, { type: ACTIONS.SET_COLOR_MODE, payload: 'partition' });
+    state = reducer(state, { type: ACTIONS.SET_COLOR_ASSIGNMENTS, payload: { type: { a: 0 }, partition: { p: 0 } } });
+    state = reducer(state, { type: ACTIONS.SET_LEGEND_COLLAPSED, payload: true });
+
+    expect(state.colorMode).toBe('partition');
+    expect(state.colorAssignments).toEqual({ type: { a: 0 }, partition: { p: 0 } });
+    expect(state.legendCollapsed).toBe(true);
+  });
+
+  it('ignores unknown colour modes', () => {
+    expect(reducer(undefined, { type: ACTIONS.SET_COLOR_MODE, payload: 'rainbow' }).colorMode).toBe('type');
+  });
+
+  it('resets colour assignments on a successful connection switch only', () => {
+    const assigned = reducer(undefined, { type: ACTIONS.SET_COLOR_ASSIGNMENTS, payload: { type: { a: 0 }, partition: {} } });
+    expect(reducer(assigned, { type: ACTIONS.SWITCH_CONNECTION_SUCCESS, payload: {} }).colorAssignments).toEqual({ type: {}, partition: {} });
+    expect(reducer(assigned, { type: ACTIONS.CLEAR_GRAPH }).colorAssignments).toEqual({ type: { a: 0 }, partition: {} });
+  });
+
+  it('drops the hardcoded demo colour groups but keeps the tag box shape', () => {
+    const { groups } = reducer(undefined, { type: 'UNKNOWN' }).networkOptions;
+    expect(Object.keys(groups)).toEqual(['tag']);
+    expect(groups.tag.shape).toBe('box');
+    expect(groups.tag.color).toBeUndefined();
   });
 });
