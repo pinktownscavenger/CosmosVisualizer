@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ACTIONS, EMPTY_GREMLIN_QUERY_ERROR, TOO_LONG_GREMLIN_QUERY_ERROR } from '../constants';
 import { executeQuery, executeTraversal } from '../api/gremlinApi';
-import { getLastSubmittedQuery, runQuery, runTraversal } from './graphOperations';
+import { getLastSubmittedQuery, retryLastOperation, runQuery, runTraversal } from './graphOperations';
 import { normalizedGraph } from '../__fixtures__/graphFixtures';
 
 vi.mock('../api/gremlinApi', () => ({
@@ -139,5 +139,32 @@ describe('runTraversal', () => {
     expect(diagnosticsIndex).toBeGreaterThan(-1);
     expect(errorIndex).toBeGreaterThan(diagnosticsIndex);
     expect(JSON.stringify(actions[errorIndex].payload)).not.toContain('raw driver failure');
+  });
+});
+
+describe('retryLastOperation', () => {
+  it('replays a failed traversal rather than the last query', async () => {
+    executeQuery.mockResolvedValue({ data: [] });
+    await runQuery({ query: 'g.V().limit(1)', nodeLimit: 100, nodeLabels: [], current: emptyGraph, dispatch: vi.fn() });
+    executeTraversal.mockRejectedValue(Object.assign(new Error('boom'), { kind: 'server' }));
+    await runTraversal({ nodeId: 'person-1', direction: 'in', nodeLimit: 100, nodeLabels: [], current: emptyGraph, dispatch: vi.fn() });
+    executeQuery.mockClear();
+    executeTraversal.mockClear();
+    executeTraversal.mockResolvedValue({ data: [] });
+
+    await retryLastOperation({ nodeLimit: 50, nodeLabels: [], current: emptyGraph, dispatch: vi.fn() });
+
+    expect(executeTraversal).toHaveBeenCalledWith({ nodeId: 'person-1', direction: 'in', nodeLimit: 50 });
+    expect(executeQuery).not.toHaveBeenCalled();
+  });
+
+  it('replays the last query after a query', async () => {
+    executeQuery.mockResolvedValue({ data: [] });
+    await runQuery({ query: 'g.V().limit(4)', nodeLimit: 100, nodeLabels: [], current: emptyGraph, dispatch: vi.fn() });
+    executeQuery.mockClear();
+
+    await retryLastOperation({ nodeLimit: 100, nodeLabels: [], current: emptyGraph, dispatch: vi.fn() });
+
+    expect(executeQuery).toHaveBeenCalledWith({ query: 'g.V().limit(4)', nodeLimit: 100 });
   });
 });

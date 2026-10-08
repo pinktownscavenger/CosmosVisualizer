@@ -83,4 +83,11 @@ describe('message line', () => {
       gremlin: { ...base.gremlin, queryStatus: 'success', queryStatusMessage: '5 nodes, 5 edges · 2 new' }
     })).toEqual({ tone: 'success', text: '5 nodes, 5 edges · 2 new' });
   });
+
+  it.each(['running', 'success', 'empty'])('shows a fresh %s result ahead of the advisory', (queryStatus) => {
+    expect(getMessageLine({
+      ...base,
+      gremlin: { ...base.gremlin, query: 'g.V().limit(25)', queryStatus, queryStatusMessage: '5 nodes, 5 edges · 2 new' }
+    })).toEqual({ tone: queryStatus, text: '5 nodes, 5 edges · 2 new' });
+  });
 });
