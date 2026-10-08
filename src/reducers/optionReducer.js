@@ -6,6 +6,8 @@ const initialState = {
   isPhysicsEnabled: true,
   nodeLimit: 100,
   selectedResultViewMode: 'table',
+  inspectorCollapsed: false,
+  historyCursor: null,
   networkOptions: {
     physics: {
       forceAtlas2Based: {
@@ -106,10 +108,10 @@ export const reducer =  (state=initialState, action)=>{
       return { ...state, isPhysicsEnabled };
     }
     case ACTIONS.ADD_QUERY_HISTORY: {
-      return { ...state, queryHistory: [ ...state.queryHistory, action.payload] }
+      return { ...state, queryHistory: [ ...state.queryHistory, action.payload], historyCursor: null }
     }
     case ACTIONS.CLEAR_QUERY_HISTORY: {
-      return { ...state, queryHistory: [] }
+      return { ...state, queryHistory: [], historyCursor: null }
     }
     case ACTIONS.SET_NODE_LABELS: {
       const nodeLabels = action.payload === undefined ? [] : action.payload;
@@ -146,6 +148,12 @@ export const reducer =  (state=initialState, action)=>{
         return state;
       }
       return { ...state, selectedResultViewMode: action.payload };
+    }
+    case ACTIONS.SET_INSPECTOR_COLLAPSED: {
+      return { ...state, inspectorCollapsed: Boolean(action.payload) };
+    }
+    case ACTIONS.SET_HISTORY_CURSOR: {
+      return { ...state, historyCursor: action.payload === undefined ? null : action.payload };
     }
     default:
       return state;
