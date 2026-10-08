@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { CanvasEmptyState, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
+import { CanvasEmptyState, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, watchFontsForNetwork } from './NetworkGraphComponent';
 import { ACTIONS } from '../../constants';
 
 describe('graph hint', () => {
@@ -14,6 +14,11 @@ describe('graph hint', () => {
     expect(html).toContain('aria-label="Dismiss graph hint"');
   });
 
+  it('fades rather than vanishing', () => {
+    const html = ReactDOMServer.renderToStaticMarkup(<GraphHint visible={true} onDismiss={() => {}} />);
+    expect(html).toMatch(/style="[^"]*opacity/);
+  });
+
   it('renders nothing after it is dismissed', () => {
     expect(ReactDOMServer.renderToStaticMarkup(
       <GraphHint visible={false} onDismiss={() => {}} />
@@ -21,33 +26,60 @@ describe('graph hint', () => {
   });
 });
 
-describe('font-ready graph measurement refresh', () => {
-  it('refreshes cached node dimensions after web fonts load', async () => {
-    const nodes = {
-      'tag-production': { needsRefresh: vi.fn() },
-      'project-cosmos': { needsRefresh: vi.fn() }
+describe('re-measuring labels once the graph font loads', () => {
+  const makeNetwork = () => {
+    const update = vi.fn();
+    const items = [
+      { id: 'tag-production', label: 'Production', type: 'tag', color: { background: '#94a3b8' }, shapeProperties: { borderDashes: false } },
+      { id: 'project-cosmos', label: 'CosmosVisualizer', type: 'project' }
+    ];
+    return { update, network: { body: { data: { nodes: { get: () => items, update } } }, redraw: vi.fn() } };
+  };
+  // Re-setting a node's label is what makes vis-network re-measure it; needsRefresh alone keeps the cached width.
+  // vis-network re-applies group default colours on an update that omits color, so the palette style travels with the label.
+  const relabelled = [[[
+    { id: 'tag-production', label: 'Production', color: { background: '#94a3b8' }, shapeProperties: { borderDashes: false } },
+    { id: 'project-cosmos', label: 'CosmosVisualizer' }
+  ]]];
+  const makeFonts = () => {
+    const listeners = {};
+    return {
+      load: vi.fn(() => Promise.resolve([])),
+      addEventListener: vi.fn((type, handler) => { listeners[type] = handler; }),
+      removeEventListener: vi.fn((type) => { delete listeners[type]; }),
+      listeners
     };
-    const network = {
-      body: { nodes },
-      redraw: vi.fn()
-    };
+  };
 
-    await refreshNetworkNodeMeasurementsAfterFonts(network, {
-      ready: Promise.resolve()
-    });
+  it('requests the label font explicitly and re-measures every node when it arrives', async () => {
+    const { update, network } = makeNetwork();
+    const fonts = makeFonts();
 
-    expect(nodes['tag-production'].needsRefresh).toHaveBeenCalled();
-    expect(nodes['project-cosmos'].needsRefresh).toHaveBeenCalled();
+    await watchFontsForNetwork(network, fonts).ready;
+
+    expect(fonts.load).toHaveBeenCalledWith('12px "JetBrains Mono"');
+    expect(update.mock.calls).toEqual(relabelled);
     expect(network.redraw).toHaveBeenCalled();
   });
 
-  it('redraws safely when the browser font loading API is unavailable', async () => {
-    const network = {
-      body: { nodes: {} },
-      redraw: vi.fn()
-    };
+  it('re-measures again whenever later font loads finish, until stopped', async () => {
+    const { update, network } = makeNetwork();
+    const fonts = makeFonts();
+    const watcher = watchFontsForNetwork(network, fonts);
+    await watcher.ready;
+    update.mockClear();
 
-    await refreshNetworkNodeMeasurementsAfterFonts(network, undefined);
+    fonts.listeners.loadingdone();
+    expect(update).toHaveBeenCalledTimes(1);
+
+    watcher.stop();
+    expect(fonts.removeEventListener).toHaveBeenCalledWith('loadingdone', expect.any(Function));
+  });
+
+  it('still redraws when the font loading API is unavailable', async () => {
+    const { network } = makeNetwork();
+
+    await watchFontsForNetwork(network, undefined).ready;
 
     expect(network.redraw).toHaveBeenCalled();
   });
@@ -73,38 +105,45 @@ describe('canvas click selection handling', () => {
 });
 
 describe('keeping the selection clear of the inspector', () => {
-  const makeNetwork = (domX) => ({
+  const card = { left: 1030, top: 12, right: 1390, bottom: 300 };
+  const makeNetwork = (dom) => ({
     getPositions: vi.fn(() => ({ 'node-1': { x: 50, y: 60 } })),
-    canvasToDOM: vi.fn(() => ({ x: domX, y: 100 })),
-    moveTo: vi.fn(),
-    body: { container: { clientWidth: 1400 } }
+    canvasToDOM: vi.fn(() => dom),
+    moveTo: vi.fn()
   });
 
-  it('pans a node that sits under the inspector into the visible region', () => {
-    const network = makeNetwork(1200);
+  it('moves a node hidden under the card to the middle of the canvas', () => {
+    const network = makeNetwork({ x: 1200, y: 100 });
 
-    keepNodeClearOfInspector(network, 'node-1', 384);
+    keepNodeClearOfInspector(network, 'node-1', card);
 
-    expect(network.moveTo).toHaveBeenCalledWith({
-      position: { x: 50, y: 60 },
-      offset: { x: -192, y: 0 },
-      animation: true
-    });
+    expect(network.moveTo).toHaveBeenCalledWith({ position: { x: 50, y: 60 }, animation: true });
   });
 
-  it('leaves a visible node where it is', () => {
-    const network = makeNetwork(400);
+  it('treats the area just around the card as covered', () => {
+    const network = makeNetwork({ x: 1015, y: 310 });
 
-    keepNodeClearOfInspector(network, 'node-1', 384);
+    keepNodeClearOfInspector(network, 'node-1', card);
 
-    expect(network.moveTo).not.toHaveBeenCalled();
+    expect(network.moveTo).toHaveBeenCalled();
   });
 
-  it('ignores missing networks and positions', () => {
-    expect(() => keepNodeClearOfInspector(null, 'node-1', 384)).not.toThrow();
-    const network = { ...makeNetwork(1200), getPositions: vi.fn(() => ({})) };
-    keepNodeClearOfInspector(network, 'node-1', 384);
-    expect(network.moveTo).not.toHaveBeenCalled();
+  it('leaves nodes beside or below the card where they are', () => {
+    for (const dom of [{ x: 400, y: 100 }, { x: 1200, y: 420 }]) {
+      const network = makeNetwork(dom);
+      keepNodeClearOfInspector(network, 'node-1', card);
+      expect(network.moveTo).not.toHaveBeenCalled();
+    }
+  });
+
+  it('ignores missing networks, positions and cards', () => {
+    expect(() => keepNodeClearOfInspector(null, 'node-1', card)).not.toThrow();
+    const missing = { ...makeNetwork({ x: 1200, y: 100 }), getPositions: vi.fn(() => ({})) };
+    keepNodeClearOfInspector(missing, 'node-1', card);
+    expect(missing.moveTo).not.toHaveBeenCalled();
+    const noCard = makeNetwork({ x: 1200, y: 100 });
+    keepNodeClearOfInspector(noCard, 'node-1', null);
+    expect(noCard.moveTo).not.toHaveBeenCalled();
   });
 });
 

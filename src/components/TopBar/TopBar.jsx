@@ -220,11 +220,6 @@ export class TopBar extends React.Component {
     this.focusEditor();
   }
 
-  runHistoryQuery(query) {
-    this.onQueryChanged(query);
-    return this.runGraphQuery(query);
-  }
-
   togglePhysics(enabled) {
     this.props.dispatch({ type: ACTIONS.SET_IS_PHYSICS_ENABLED, payload: enabled });
     applyGraphControl(this.props.network, 'physics', { enabled, networkOptions: this.props.networkOptions });
@@ -269,8 +264,6 @@ export class TopBar extends React.Component {
         </div>
         <HistoryMenu
           queries={this.props.queryHistory}
-          disabled={this.graphActionsDisabled()}
-          onRun={query => this.runHistoryQuery(query)}
           onLoad={query => this.loadHistoryQuery(query)}
           onClear={() => dispatch({ type: ACTIONS.CLEAR_QUERY_HISTORY })}
         />

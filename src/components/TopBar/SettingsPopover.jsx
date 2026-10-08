@@ -1,5 +1,6 @@
 import React from 'react';
 import { Popover, Switch } from '@material-ui/core';
+import SettingsIcon from '@material-ui/icons/Settings';
 
 export const SettingsPanel = ({
   nodeLimit,
@@ -80,7 +81,7 @@ export class SettingsPopover extends React.Component {
           aria-expanded={Boolean(this.state.anchor)}
           onClick={event => this.setState({ anchor: event.currentTarget })}
         >
-          ⚙
+          <SettingsIcon style={{ fontSize: 22 }} />
         </button>
         <Popover
           open={Boolean(this.state.anchor)}
