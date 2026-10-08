@@ -666,15 +666,20 @@ textarea:focus-visible,
   list-style: none;
 }
 
-.history-menu__item {
+.history-menu__entry {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  transition: background-color 120ms ease;
 }
 
-.history-menu__item:hover {
+.history-menu__entry:hover,
+.history-menu__entry:focus-visible {
   background: var(--color-surface-strong);
 }
 
@@ -689,7 +694,6 @@ textarea:focus-visible,
   white-space: nowrap;
 }
 
-.history-menu__action,
 .history-menu__clear,
 .settings-panel__button,
 .settings-panel__remove {
@@ -699,11 +703,6 @@ textarea:focus-visible,
   background: transparent;
   color: #cbd5e1;
   font-size: 0.75rem;
-}
-
-.history-menu__action:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
 }
 
 .history-menu__clear {
