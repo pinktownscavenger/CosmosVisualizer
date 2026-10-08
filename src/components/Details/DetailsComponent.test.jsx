@@ -212,7 +212,7 @@ describe('details query history actions', () => {
 
     expect(dispatch).toHaveBeenCalledWith({
       type: ACTIONS.SET_QUERY_STATUS,
-      payload: { status: 'success', message: 'Query complete. Added 4 nodes and 9 edges.' }
+      payload: { status: 'success', message: '4 nodes, 5 edges · 9 new' }
     });
   });
 });

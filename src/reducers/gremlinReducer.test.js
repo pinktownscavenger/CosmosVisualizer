@@ -57,12 +57,21 @@ describe('gremlin reducer', () => {
     });
   });
 
+  it('keeps a structured error and mirrors its message to the status line', () => {
+    const error = { message: 'Query needs an edit. Fix it.', action: 'edit-query', actionLabel: 'Edit query' };
+    const state = reducer(undefined, { type: ACTIONS.SET_ERROR, payload: error });
+
+    expect(state.error).toEqual(error);
+    expect(state.queryStatus).toBe('error');
+    expect(state.queryStatusMessage).toBe('Query needs an edit. Fix it.');
+  });
+
   it('moves to an error status when an error is set', () => {
     expect(reducer(undefined, {
       type: ACTIONS.SET_ERROR,
       payload: 'Enter a Gremlin query before executing.'
     })).toMatchObject({
-      error: 'Enter a Gremlin query before executing.',
+      error: { message: 'Enter a Gremlin query before executing.' },
       queryStatus: 'error',
       queryStatusMessage: 'Enter a Gremlin query before executing.'
     });

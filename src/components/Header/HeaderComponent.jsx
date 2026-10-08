@@ -28,33 +28,37 @@ export const getConnectionLabel = (status, connection) => {
   return `${connection.endpointHost} / ${connection.database} / ${connection.container}`;
 };
 
-const operationLabel = (operation) => {
+const operationDirection = (operation) => {
   if (operation === 'traverse-in') {
-    return 'Inbound traversal';
+    return 'inbound';
   }
   if (operation === 'traverse-out') {
-    return 'Outbound traversal';
+    return 'outbound';
   }
   return null;
 };
 
-export const formatRequestCharge = (diagnostics) => {
+const formatCharge = (charge) => charge.toLocaleString('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+export const getRequestChargeParts = (diagnostics) => {
   if (!diagnostics) {
-    return null;
+    return { total: '— RU', detail: 'no operation yet' };
   }
-  const label = operationLabel(diagnostics.operation);
   const requestCharge = diagnostics.requestCharge;
   if (!requestCharge || !Number.isFinite(requestCharge.total)) {
-    return label ? `${label} - charge unavailable` : 'Charge unavailable';
+    return { total: '— RU', detail: 'charge unavailable' };
   }
 
-  const prefix = label ? `${label} - ` : '';
   const requests = Array.isArray(requestCharge.requests) ? requestCharge.requests : [];
   const breakdown = requests
     .filter(request => request && Number.isFinite(request.charge))
-    .map(request => `${request.kind} ${request.charge.toFixed(2)}`)
+    .map(request => `${request.kind} ${formatCharge(request.charge)}`)
     .join(' + ');
-  return `${prefix}${requestCharge.total.toFixed(2)} RUs total${breakdown ? ` - ${breakdown}` : ''}`;
+  const detail = [operationDirection(diagnostics.operation), breakdown].filter(Boolean).join(' · ');
+  return { total: `${formatCharge(requestCharge.total)} RU`, detail };
 };
 
 export class Header extends React.Component {
@@ -133,7 +137,10 @@ export class Header extends React.Component {
       payload: { status: 'running', message: QUERY_RUNNING_MESSAGE }
     });
     executeQuery({ query, nodeLimit: this.props.nodeLimit }).then((response) => {
-      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch);
+      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch, {
+        nodes: this.props.nodes,
+        edges: this.props.edges
+      });
       const resultStatus = getQueryResultStatus(summary);
       this.props.dispatch({
         type: ACTIONS.SET_QUERY_STATUS,
@@ -169,7 +176,10 @@ export class Header extends React.Component {
       || this.props.connectionSwitching
       || this.props.connectionStatus !== 'connected';
     const connectionLabel = getConnectionLabel(this.props.connectionStatus, this.props.connection);
-    const diagnosticsSummary = formatRequestCharge(this.props.latestDiagnostics);
+    const chargeParts = getRequestChargeParts(this.props.latestDiagnostics);
+    const diagnosticsSummary = this.props.latestDiagnostics
+      ? [chargeParts.total, chargeParts.detail].filter(Boolean).join(' - ')
+      : null;
     const advisories = this.props.connectionStatus === 'connected' && this.props.connection
       ? analyzePartitionFanOut(this.props.query, this.props.connection.partitionKey)
       : [];
@@ -259,7 +269,7 @@ export class Header extends React.Component {
           </div>
         )}
 
-        {this.props.error && <div className="error-banner" role="alert">{this.props.error}</div>}
+        {this.props.error && <div className="error-banner" role="alert">{this.props.error.message}</div>}
         {this.props.connectionError && (
           <div className="connection-error" role="alert">Connection: {this.props.connectionError}</div>
         )}

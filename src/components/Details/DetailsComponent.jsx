@@ -240,7 +240,10 @@ export class Details extends React.Component {
       payload: { status: 'running', message: `Traversing ${direction === 'in' ? 'inbound' : 'outbound'} edges...` }
     });
     return executeTraversal({ nodeId, direction, nodeLimit: this.props.nodeLimit }).then((response) => {
-      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch);
+      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch, {
+        nodes: this.props.nodes,
+        edges: this.props.edges
+      });
       this.props.dispatch({
         type: ACTIONS.SET_QUERY_STATUS,
         payload: getQueryResultStatus(summary)
@@ -285,7 +288,10 @@ export class Details extends React.Component {
       payload: { status: 'running', message: 'Executing Gremlin traversal...' }
     });
     return executeQuery({ query, nodeLimit: this.props.nodeLimit }).then((response) => {
-      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch);
+      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch, {
+        nodes: this.props.nodes,
+        edges: this.props.edges
+      });
       this.props.dispatch({
         type: ACTIONS.SET_QUERY_STATUS,
         payload: getQueryResultStatus(summary)
@@ -436,6 +442,8 @@ export class Details extends React.Component {
 export const DetailsComponent = connect((state)=>{
   return {
     network: state.graph.network,
+    nodes: state.graph.nodes,
+    edges: state.graph.edges,
     selectedNode: state.graph.selectedNode,
     selectedEdge: state.graph.selectedEdge,
     queryHistory: state.options.queryHistory,
