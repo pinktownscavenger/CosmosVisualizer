@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { GraphCounts, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
+import { CanvasEmptyState, GraphCounts, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
 import { ACTIONS } from '../../constants';
 
 describe('graph hint', () => {
@@ -131,5 +131,25 @@ describe('canvas overlays', () => {
     graph.state = { ...graph.state, hasSelectedOnce: true };
 
     expect(graph.isHintVisible()).toBe(false);
+  });
+});
+
+describe('canvas empty state', () => {
+  it('prompts for a query on an empty connected graph', () => {
+    const html = ReactDOMServer.renderToStaticMarkup(<CanvasEmptyState connectionStatus="connected" loading={false} onConnect={() => {}} />);
+    expect(html).toContain('Run a query to load your graph');
+  });
+
+  it('offers to connect while disconnected', () => {
+    const onConnect = vi.fn();
+    const element = CanvasEmptyState({ connectionStatus: 'disconnected', loading: false, onConnect });
+    const html = ReactDOMServer.renderToStaticMarkup(element);
+    expect(html).toContain('Connect to Cosmos DB');
+    element.props.children.find(child => child && child.type === 'button').props.onClick();
+    expect(onConnect).toHaveBeenCalled();
+  });
+
+  it('stays quiet while the connection is loading', () => {
+    expect(ReactDOMServer.renderToStaticMarkup(<CanvasEmptyState connectionStatus="disconnected" loading={true} onConnect={() => {}} />)).toBe('');
   });
 });

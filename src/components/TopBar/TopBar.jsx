@@ -24,12 +24,15 @@ const normalizePartitionKey = (partitionKey) => (
 export class TopBar extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { connectionDialogOpen: false };
     this.editorRef = React.createRef();
   }
 
   componentDidMount() {
-    this.loadConnection();
+    return this.loadConnection().then((payload) => {
+      if (payload && payload.connection && payload.connection.mode === 'fixture') {
+        this.props.dispatch({ type: ACTIONS.SEED_DEMO_GRAPH });
+      }
+    });
   }
 
   loadConnection() {
@@ -72,13 +75,13 @@ export class TopBar extends React.Component {
 
   openConnectionDialog() {
     this.props.dispatch({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
-    this.setState({ connectionDialogOpen: true });
+    this.props.dispatch({ type: ACTIONS.OPEN_CONNECTION_DIALOG });
   }
 
   // A failed probe changed nothing, so its error should not outlive the dialog.
   closeConnectionDialog() {
     this.props.dispatch({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
-    this.setState({ connectionDialogOpen: false });
+    this.props.dispatch({ type: ACTIONS.CLOSE_CONNECTION_DIALOG });
   }
 
   connectionSwitchDisabled() {
@@ -250,7 +253,7 @@ export class TopBar extends React.Component {
         />
         <MessageLine line={line} onAction={action => this.onMessageAction(action)} />
         <ConnectionDialog
-          open={this.state.connectionDialogOpen}
+          open={Boolean(this.props.connectionDialogOpen)}
           connection={this.props.connection}
           switching={this.props.connectionSwitching}
           error={this.props.connectionError}
@@ -283,5 +286,6 @@ export default connect((state) => ({
   connectionLoading: state.connection.loading,
   connectionSwitching: state.connection.switching,
   connectionError: state.connection.error,
-  probeDiagnostics: state.connection.probeDiagnostics
+  probeDiagnostics: state.connection.probeDiagnostics,
+  connectionDialogOpen: state.connection.dialogOpen
 }))(TopBar);

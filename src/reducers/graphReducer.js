@@ -13,14 +13,27 @@ const mapValues = (obj, mapper) => Object.keys(obj).reduce((result, key) => {
   return result;
 }, {});
 
+// The demo graph is only seeded in fixture mode, so a real Cosmos account never shows fake data.
 const initialState = {
   network: null,
-  nodeHolder: new vis.DataSet(demoNodes),
-  edgeHolder: new vis.DataSet(demoEdges),
-  nodes: demoNodes,
-  edges: demoEdges,
+  nodeHolder: new vis.DataSet([]),
+  edgeHolder: new vis.DataSet([]),
+  nodes: [],
+  edges: [],
   selectedNode: {},
   selectedEdge: {},
+};
+
+const addNodes = (state, incoming) => {
+  const newNodes = getDiffNodes(incoming, state.nodes);
+  state.nodeHolder.add(newNodes);
+  return { ...state, nodes: [...state.nodes, ...newNodes] };
+};
+
+const addEdges = (state, incoming) => {
+  const newEdges = getDiffEdges(incoming, state.edges);
+  state.edgeHolder.add(newEdges);
+  return { ...state, edges: [...state.edges, ...newEdges] };
 };
 
 export const reducer =  (state=initialState, action)=>{
@@ -35,16 +48,13 @@ export const reducer =  (state=initialState, action)=>{
       return { ...state, network: action.payload };
     }
     case ACTIONS.ADD_NODES: {
-      const newNodes = getDiffNodes(action.payload, state.nodes);
-      const nodes = [...state.nodes, ...newNodes];
-      state.nodeHolder.add(newNodes);
-      return { ...state, nodes };
+      return addNodes(state, action.payload);
     }
     case ACTIONS.ADD_EDGES: {
-      const newEdges = getDiffEdges(action.payload, state.edges);
-      const edges = [...state.edges, ...newEdges];
-      state.edgeHolder.add(newEdges);
-      return { ...state, edges };
+      return addEdges(state, action.payload);
+    }
+    case ACTIONS.SEED_DEMO_GRAPH: {
+      return addEdges(addNodes(state, demoNodes), demoEdges);
     }
     case ACTIONS.SET_SELECTED_NODE: {
       const nodeId = action.payload;
@@ -73,7 +83,10 @@ export const reducer =  (state=initialState, action)=>{
         }
         return node;
       });
-      return { ...state, nodes };
+      const selectedNode = state.selectedNode && state.selectedNode.id !== undefined
+        ? nodes.find(node => node.id === state.selectedNode.id) || state.selectedNode
+        : state.selectedNode;
+      return { ...state, nodes, selectedNode };
     }
     default:
       return state;
