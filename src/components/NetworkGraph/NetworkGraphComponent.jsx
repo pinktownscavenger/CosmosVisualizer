@@ -1,7 +1,8 @@
 import React from 'react';
 import {connect} from 'react-redux';
 import vis from 'vis-network';
-import { IconButton, Tooltip } from '@material-ui/core';
+import { Fade, IconButton, Tooltip } from '@material-ui/core';
+import { motionTimeout } from '../../logics/motion';
 import CenterFocusStrongIcon from '@material-ui/icons/CenterFocusStrong';
 import FullscreenIcon from '@material-ui/icons/Fullscreen';
 import PauseCircleFilledIcon from '@material-ui/icons/PauseCircleFilled';
@@ -17,12 +18,8 @@ import InspectorCard from '../Inspector/InspectorCard';
 import { GraphLegend } from './GraphLegend';
 import { changeColorMode } from '../../logics/graphOperations';
 
-export const GraphHint = ({ visible, onDismiss }) => {
-  if (!visible) {
-    return null;
-  }
-
-  return (
+export const GraphHint = ({ visible, onDismiss }) => (
+  <Fade in={visible} timeout={motionTimeout(200)} unmountOnExit>
     <div className="graph-hint">
       <span>Click a node or edge to inspect it, then traverse from the selected node.</span>
       <Tooltip title="Dismiss hint">
@@ -31,8 +28,8 @@ export const GraphHint = ({ visible, onDismiss }) => {
         </IconButton>
       </Tooltip>
     </div>
-  );
-};
+  </Fade>
+);
 
 export const CanvasEmptyState = ({ connectionStatus, loading, onConnect }) => {
   if (loading) {
@@ -73,7 +70,17 @@ const remeasureNodes = (network) => {
   if (!dataSet) {
     return;
   }
-  const labels = dataSet.get().map(({ id, label }) => ({ id, label }));
+  // An update without color makes vis-network fall back to group defaults, so carry the palette style.
+  const labels = dataSet.get().map(({ id, label, color, shapeProperties }) => {
+    const item = { id, label };
+    if (color !== undefined) {
+      item.color = color;
+    }
+    if (shapeProperties !== undefined) {
+      item.shapeProperties = shapeProperties;
+    }
+    return item;
+  });
   if (labels.length > 0) {
     dataSet.update(labels);
   }

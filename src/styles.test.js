@@ -53,4 +53,10 @@ describe('layout stylesheet contracts', () => {
     }
     expect(stylesheet).toContain('.connection-dialog__fields');
   });
+
+  it('disables transitions for people who ask for reduced motion', () => {
+    const block = stylesheet.slice(stylesheet.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(block).toContain('transition-duration: 0.01ms !important');
+    expect(block).toContain('animation-duration: 0.01ms !important');
+  });
 });

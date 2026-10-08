@@ -1,6 +1,7 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import ReactDOMServer from 'react-dom/server';
-import { Simulate } from 'react-dom/test-utils';
+import { act, Simulate } from 'react-dom/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GraphLegend } from './GraphLegend';
 import { mount, unmountAll } from '../TopBar/testUtils';
@@ -76,5 +77,18 @@ describe('graph legend', () => {
     expect(partition.disabled).toBe(true);
     Simulate.click(partition);
     expect(onModeChange).not.toHaveBeenCalled();
+  });
+
+  it('animates open from collapsed and rotates its chevron', () => {
+    const root = mount(<GraphLegend {...baseProps} collapsed={true} />);
+    expect(root.querySelector('.graph-legend__chevron').className).toContain('graph-legend__chevron--collapsed');
+
+    act(() => {
+      ReactDOM.render(<GraphLegend {...baseProps} collapsed={false} />, root);
+    });
+
+    expect(root.querySelector('.MuiCollapse-container')).not.toBeNull();
+    expect(root.querySelectorAll('.graph-legend__row')).toHaveLength(4);
+    expect(root.querySelector('.graph-legend__chevron').className).not.toContain('graph-legend__chevron--collapsed');
   });
 });
