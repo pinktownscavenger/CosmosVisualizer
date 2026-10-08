@@ -86,4 +86,22 @@ describe('option reducer', () => {
     expect(tagGroup.margin.right).toBeGreaterThanOrEqual(20);
     expect(tagGroup.labelHighlightBold).toBe(false);
   });
+
+  it('starts with the inspector expanded and no history cursor', () => {
+    const state = reducer(undefined, { type: '@@INIT' });
+    expect(state.inspectorCollapsed).toBe(false);
+    expect(state.historyCursor).toBeNull();
+  });
+
+  it('stores the inspector collapsed state and the history cursor', () => {
+    const collapsed = reducer(undefined, { type: ACTIONS.SET_INSPECTOR_COLLAPSED, payload: true });
+    expect(collapsed.inspectorCollapsed).toBe(true);
+    expect(reducer(collapsed, { type: ACTIONS.SET_HISTORY_CURSOR, payload: 2 }).historyCursor).toBe(2);
+  });
+
+  it('resets the history cursor when history changes', () => {
+    const cycling = reducer(undefined, { type: ACTIONS.SET_HISTORY_CURSOR, payload: 0 });
+    expect(reducer(cycling, { type: ACTIONS.ADD_QUERY_HISTORY, payload: 'g.V()' }).historyCursor).toBeNull();
+    expect(reducer(cycling, { type: ACTIONS.CLEAR_QUERY_HISTORY }).historyCursor).toBeNull();
+  });
 });
