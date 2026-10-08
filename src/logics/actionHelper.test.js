@@ -90,4 +90,20 @@ describe('query action helper', () => {
       type: ACTIONS.SET_ERROR
     }));
   });
+
+  it('styles new nodes with the active colour mode before adding them', () => {
+    const dispatch = vi.fn();
+
+    onFetchQuery({ data: normalizedGraph }, 'g.V()', [], dispatch, {
+      nodes: [], edges: [], colorMode: 'partition', colorAssignments: { type: {}, partition: {} }
+    });
+
+    const types = dispatch.mock.calls.map(([action]) => action.type);
+    expect(types.indexOf(ACTIONS.SET_COLOR_ASSIGNMENTS)).toBeLessThan(types.indexOf(ACTIONS.ADD_NODES));
+    const assignments = dispatch.mock.calls.find(([action]) => action.type === ACTIONS.SET_COLOR_ASSIGNMENTS)[0].payload;
+    expect(Object.keys(assignments.partition).length).toBeGreaterThan(0);
+    expect(assignments.type).toEqual({});
+    const added = dispatch.mock.calls.find(([action]) => action.type === ACTIONS.ADD_NODES)[0].payload;
+    expect(added.every(node => node.color && node.shapeProperties)).toBe(true);
+  });
 });

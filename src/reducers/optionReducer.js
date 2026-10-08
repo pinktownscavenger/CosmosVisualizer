@@ -1,5 +1,7 @@
 import { ACTIONS } from '../constants';
 
+const COLOR_MODES = ['type', 'partition'];
+
 const initialState = {
   nodeLabels: [],
   queryHistory: [],
@@ -8,6 +10,9 @@ const initialState = {
   selectedResultViewMode: 'table',
   inspectorCollapsed: false,
   historyCursor: null,
+  colorMode: 'type',
+  colorAssignments: { type: {}, partition: {} },
+  legendCollapsed: false,
   networkOptions: {
     physics: {
       forceAtlas2Based: {
@@ -48,20 +53,8 @@ const initialState = {
       }
     },
     groups: {
-      person: {
-        color: { background: '#22c55e', border: '#bbf7d0' }
-      },
-      company: {
-        color: { background: '#38bdf8', border: '#bae6fd' }
-      },
-      project: {
-        color: { background: '#a78bfa', border: '#ddd6fe' }
-      },
-      dataset: {
-        color: { background: '#f59e0b', border: '#fde68a' }
-      },
+      // Colour comes from the node palette (nodeColors.js); this group only shapes tags as boxes.
       tag: {
-        color: { background: '#334155', border: '#94a3b8' },
         labelHighlightBold: false,
         shape: 'box',
         margin: {
@@ -148,6 +141,18 @@ export const reducer =  (state=initialState, action)=>{
         return state;
       }
       return { ...state, selectedResultViewMode: action.payload };
+    }
+    case ACTIONS.SET_COLOR_MODE: {
+      return COLOR_MODES.includes(action.payload) ? { ...state, colorMode: action.payload } : state;
+    }
+    case ACTIONS.SET_COLOR_ASSIGNMENTS: {
+      return { ...state, colorAssignments: action.payload };
+    }
+    case ACTIONS.SET_LEGEND_COLLAPSED: {
+      return { ...state, legendCollapsed: Boolean(action.payload) };
+    }
+    case ACTIONS.SWITCH_CONNECTION_SUCCESS: {
+      return { ...state, colorAssignments: { type: {}, partition: {} } };
     }
     case ACTIONS.SET_INSPECTOR_COLLAPSED: {
       return { ...state, inspectorCollapsed: Boolean(action.payload) };

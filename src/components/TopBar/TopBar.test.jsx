@@ -35,6 +35,8 @@ const baseProps = {
   probeDiagnostics: null,
   queryHistory: [],
   historyCursor: null,
+  colorMode: 'type',
+  colorAssignments: { type: {}, partition: {} },
   isPhysicsEnabled: true,
   network: null,
   networkOptions: { physics: {} }
@@ -228,6 +230,10 @@ describe('top bar behaviour', () => {
     await bar.componentDidMount();
 
     expect(dispatch.mock.calls.some(([action]) => action.type === ACTIONS.SEED_DEMO_GRAPH)).toBe(seeded);
+    if (seeded) {
+      const seed = dispatch.mock.calls.find(([action]) => action.type === ACTIONS.SEED_DEMO_GRAPH)[0].payload;
+      expect(seed.nodes.every(node => node.color)).toBe(true);
+    }
   });
 
   it.each([
