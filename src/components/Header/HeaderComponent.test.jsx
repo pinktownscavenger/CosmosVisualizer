@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Header, formatRequestCharge, getConnectionLabel } from './HeaderComponent';
+import { Header, getRequestChargeParts, getConnectionLabel } from './HeaderComponent';
 import { ACTIONS } from '../../constants';
 import { executeQuery, getConnection, switchConnection } from '../../api/gremlinApi';
 
@@ -177,8 +177,8 @@ describe('header query controls', () => {
     expect(JSON.stringify(dispatch.mock.calls)).not.toContain('one-shot-secret');
   });
 
-  it('formats RU totals, request breakdowns, traversal identity, and unavailable charges', () => {
-    expect(formatRequestCharge({
+  it('splits RU charges into a total and a breakdown line', () => {
+    expect(getRequestChargeParts({
       operation: 'query',
       requestCharge: {
         total: 47.2,
@@ -187,13 +187,16 @@ describe('header query controls', () => {
           { kind: 'edges', charge: 15.8 }
         ]
       }
-    })).toBe('47.20 RUs total - vertices 31.40 + edges 15.80');
-    expect(formatRequestCharge({
-      operation: 'traverse-in',
-      requestCharge: { total: 8.75, requests: [{ kind: 'vertices', charge: 8.75 }] }
-    })).toBe('Inbound traversal - 8.75 RUs total - vertices 8.75');
-    expect(formatRequestCharge({ operation: 'query' })).toBe('Charge unavailable');
-    expect(formatRequestCharge(null)).toBeNull();
+    })).toEqual({ total: '47.20 RU', detail: 'vertices 31.40 + edges 15.80' });
+    expect(getRequestChargeParts({
+      operation: 'traverse-out',
+      requestCharge: { total: 3.75, requests: [{ kind: 'vertices', charge: 2.5 }, { kind: 'edges', charge: 1.25 }] }
+    })).toEqual({ total: '3.75 RU', detail: 'outbound · vertices 2.50 + edges 1.25' });
+    expect(getRequestChargeParts({ operation: 'traverse-in', requestCharge: { total: 1204.1, requests: [] } }))
+      .toEqual({ total: '1,204.10 RU', detail: 'inbound' });
+    expect(getRequestChargeParts({ operation: 'query', requestCharge: null }))
+      .toEqual({ total: '— RU', detail: 'charge unavailable' });
+    expect(getRequestChargeParts(null)).toEqual({ total: '— RU', detail: 'no operation yet' });
   });
 
   it('shows partition advisories without disabling Execute or changing history', () => {

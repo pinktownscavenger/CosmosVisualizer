@@ -15,7 +15,7 @@ describe('query action helper', () => {
       dispatch
     );
 
-    expect(summary).toEqual({ nodes: 4, edges: 9 });
+    expect(summary).toEqual({ nodes: 4, edges: 5, newNodes: 4, newEdges: 5 });
     expect(dispatch.mock.calls[0][0]).toEqual({
       type: ACTIONS.SET_OPERATION_DIAGNOSTICS,
       payload: diagnostics
@@ -24,6 +24,18 @@ describe('query action helper', () => {
       type: ACTIONS.ADD_QUERY_HISTORY,
       payload: 'g.V()'
     });
+  });
+
+  it('counts edges after de-duplication and new items against the current graph', () => {
+    const summary = onFetchQuery(
+      { data: normalizedGraph },
+      'g.V()',
+      [],
+      vi.fn(),
+      { nodes: [{ id: 'person-1' }, { id: 'company-1' }], edges: [{ id: 'edge-1' }] }
+    );
+
+    expect(summary).toEqual({ nodes: 4, edges: 5, newNodes: 2, newEdges: 4 });
   });
 
   it('preserves selected-node traversal strings in query history', () => {
@@ -57,7 +69,11 @@ describe('query action helper', () => {
       [{ type: ACTIONS.SET_OPERATION_DIAGNOSTICS, payload: diagnostics }],
       [{
         type: ACTIONS.SET_ERROR,
-        payload: 'Cosmos graph query failed. Cosmos or the graph proxy failed while running the traversal. Retry, or check the proxy logs for connection details.'
+        payload: {
+          message: 'Cosmos graph query failed. Cosmos or the graph proxy failed while running the traversal. Retry, or check the proxy logs for connection details.',
+          action: 'retry',
+          actionLabel: 'Retry'
+        }
       }]
     ]);
   });

@@ -14,11 +14,12 @@ export const reducer =  (state=initialState, action)=>{
       return { ...state, query: action.payload, error: null }
     }
     case ACTIONS.SET_ERROR: {
+      const error = typeof action.payload === 'string' ? { message: action.payload } : action.payload || null;
       return {
         ...state,
-        error: action.payload,
-        queryStatus: action.payload ? 'error' : state.queryStatus,
-        queryStatusMessage: action.payload || state.queryStatusMessage
+        error,
+        queryStatus: error ? 'error' : state.queryStatus,
+        queryStatusMessage: error ? error.message : state.queryStatusMessage
       }
     }
     case ACTIONS.SET_QUERY_STATUS: {
