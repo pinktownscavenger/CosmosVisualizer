@@ -10,8 +10,9 @@ import RestoreIcon from '@material-ui/icons/Restore';
 import ZoomInIcon from '@material-ui/icons/ZoomIn';
 import ZoomOutIcon from '@material-ui/icons/ZoomOut';
 import CloseIcon from '@material-ui/icons/Close';
-import { ACTIONS } from '../../constants';
-import { applyGraphControl } from '../../logics/graphControls';
+import { ACTIONS, INSPECTOR_INSET } from '../../constants';
+import { applyGraphControl, getVisibleCenterOffset } from '../../logics/graphControls';
+import InspectorCard from '../Inspector/InspectorCard';
 
 export const GraphHint = ({ visible, onDismiss }) => {
   if (!visible) {
@@ -52,6 +53,21 @@ export const refreshNetworkNodeMeasurementsAfterFonts = (network, fontSet) => {
   });
 };
 
+export const keepNodeClearOfInspector = (network, nodeId, insetRight) => {
+  if (!network || !insetRight) {
+    return;
+  }
+  const position = network.getPositions([nodeId])[nodeId];
+  if (!position) {
+    return;
+  }
+  const canvasWidth = network.body && network.body.container ? network.body.container.clientWidth : 0;
+  if (network.canvasToDOM(position).x <= canvasWidth - insetRight) {
+    return;
+  }
+  network.moveTo({ position, offset: getVisibleCenterOffset(insetRight), animation: true });
+};
+
 // vis-network has no event for clicking empty canvas, so clear the selection on a bare click.
 export const handleCanvasClick = (params, dispatch) => {
   const hasNodes = params.nodes && params.nodes.length > 0;
@@ -86,6 +102,9 @@ class NetworkGraph extends React.Component{
     network.on('selectNode', (params) => {
       const nodeId = params.nodes && params.nodes.length > 0 ? params.nodes[0] : null;
       this.props.dispatch({ type: ACTIONS.SET_SELECTED_NODE, payload: nodeId });
+      if (nodeId !== null) {
+        keepNodeClearOfInspector(network, nodeId, INSPECTOR_INSET);
+      }
     });
 
     network.on("selectEdge", (params) => {
@@ -122,8 +141,14 @@ class NetworkGraph extends React.Component{
     applyGraphControl(network, command, {
       selectedNode: this.props.selectedNode,
       selectedEdge: this.props.selectedEdge,
-      networkOptions: this.props.networkOptions
+      networkOptions: this.props.networkOptions,
+      insetRight: this.isInspectorOpen() ? INSPECTOR_INSET : 0
     });
+  }
+
+  isInspectorOpen() {
+    const hasItem = (selection) => Boolean(selection && Object.keys(selection).length > 0);
+    return hasItem(this.props.selectedNode) || hasItem(this.props.selectedEdge);
   }
 
   render(){
@@ -175,6 +200,7 @@ class NetworkGraph extends React.Component{
           onDismiss={() => this.setState({ isHintVisible: false })}
         />
         <div ref={this.networkRef} className={'mynetwork'} />
+        <InspectorCard />
       </section>
     );
   }
