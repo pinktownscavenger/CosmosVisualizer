@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { CanvasEmptyState, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
+import { CanvasEmptyState, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, watchFontsForNetwork } from './NetworkGraphComponent';
 import { ACTIONS } from '../../constants';
 
 describe('graph hint', () => {
@@ -21,33 +21,53 @@ describe('graph hint', () => {
   });
 });
 
-describe('font-ready graph measurement refresh', () => {
-  it('refreshes cached node dimensions after web fonts load', async () => {
-    const nodes = {
-      'tag-production': { needsRefresh: vi.fn() },
-      'project-cosmos': { needsRefresh: vi.fn() }
+describe('re-measuring labels once the graph font loads', () => {
+  const makeNetwork = () => {
+    const update = vi.fn();
+    const items = [{ id: 'tag-production', label: 'Production', color: {} }, { id: 'project-cosmos', label: 'CosmosVisualizer' }];
+    return { update, network: { body: { data: { nodes: { get: () => items, update } } }, redraw: vi.fn() } };
+  };
+  // Re-setting a node's label is what makes vis-network re-measure it; needsRefresh alone keeps the cached width.
+  const relabelled = [[[{ id: 'tag-production', label: 'Production' }, { id: 'project-cosmos', label: 'CosmosVisualizer' }]]];
+  const makeFonts = () => {
+    const listeners = {};
+    return {
+      load: vi.fn(() => Promise.resolve([])),
+      addEventListener: vi.fn((type, handler) => { listeners[type] = handler; }),
+      removeEventListener: vi.fn((type) => { delete listeners[type]; }),
+      listeners
     };
-    const network = {
-      body: { nodes },
-      redraw: vi.fn()
-    };
+  };
 
-    await refreshNetworkNodeMeasurementsAfterFonts(network, {
-      ready: Promise.resolve()
-    });
+  it('requests the label font explicitly and re-measures every node when it arrives', async () => {
+    const { update, network } = makeNetwork();
+    const fonts = makeFonts();
 
-    expect(nodes['tag-production'].needsRefresh).toHaveBeenCalled();
-    expect(nodes['project-cosmos'].needsRefresh).toHaveBeenCalled();
+    await watchFontsForNetwork(network, fonts).ready;
+
+    expect(fonts.load).toHaveBeenCalledWith('12px "JetBrains Mono"');
+    expect(update.mock.calls).toEqual(relabelled);
     expect(network.redraw).toHaveBeenCalled();
   });
 
-  it('redraws safely when the browser font loading API is unavailable', async () => {
-    const network = {
-      body: { nodes: {} },
-      redraw: vi.fn()
-    };
+  it('re-measures again whenever later font loads finish, until stopped', async () => {
+    const { update, network } = makeNetwork();
+    const fonts = makeFonts();
+    const watcher = watchFontsForNetwork(network, fonts);
+    await watcher.ready;
+    update.mockClear();
 
-    await refreshNetworkNodeMeasurementsAfterFonts(network, undefined);
+    fonts.listeners.loadingdone();
+    expect(update).toHaveBeenCalledTimes(1);
+
+    watcher.stop();
+    expect(fonts.removeEventListener).toHaveBeenCalledWith('loadingdone', expect.any(Function));
+  });
+
+  it('still redraws when the font loading API is unavailable', async () => {
+    const { network } = makeNetwork();
+
+    await watchFontsForNetwork(network, undefined).ready;
 
     expect(network.redraw).toHaveBeenCalled();
   });
