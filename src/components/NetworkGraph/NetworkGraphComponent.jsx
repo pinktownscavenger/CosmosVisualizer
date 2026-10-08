@@ -14,6 +14,8 @@ import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
 import { ACTIONS, INSPECTOR_INSET } from '../../constants';
 import { applyGraphControl, getVisibleCenterOffset } from '../../logics/graphControls';
 import InspectorCard from '../Inspector/InspectorCard';
+import { GraphLegend } from './GraphLegend';
+import { changeColorMode } from '../../logics/graphOperations';
 
 export const GraphHint = ({ visible, onDismiss }) => {
   if (!visible) {
@@ -31,14 +33,6 @@ export const GraphHint = ({ visible, onDismiss }) => {
     </div>
   );
 };
-
-const pluralize = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`;
-
-export const GraphCounts = ({ nodes, edges }) => (
-  <div className="graph-counts" aria-label="Graph summary">
-    {pluralize(nodes, 'node')} · {pluralize(edges, 'edge')}
-  </div>
-);
 
 export const CanvasEmptyState = ({ connectionStatus, loading, onConnect }) => {
   if (loading) {
@@ -260,7 +254,20 @@ export class NetworkGraph extends React.Component{
           </Tooltip>
         </div>
         <div ref={this.networkRef} className={'mynetwork'} />
-        <GraphCounts nodes={this.props.nodeCount} edges={this.props.edgeCount} />
+        <GraphLegend
+          nodes={this.props.nodes}
+          edgeCount={this.props.edgeCount}
+          colorMode={this.props.colorMode}
+          modeAssignments={this.props.colorAssignments[this.props.colorMode]}
+          collapsed={this.props.legendCollapsed}
+          onModeChange={mode => changeColorMode({
+            mode,
+            nodes: this.props.nodes,
+            colorAssignments: this.props.colorAssignments,
+            dispatch: this.props.dispatch
+          })}
+          onToggleCollapsed={() => this.props.dispatch({ type: ACTIONS.SET_LEGEND_COLLAPSED, payload: !this.props.legendCollapsed })}
+        />
         {this.props.nodeCount === 0 && this.props.queryStatus !== 'running' && (
           <CanvasEmptyState
             connectionStatus={this.props.connectionStatus}
@@ -290,9 +297,13 @@ export const NetworkGraphComponent = connect((state)=>{
     selectedEdge: state.graph.selectedEdge,
     isPhysicsEnabled: state.options.isPhysicsEnabled,
     networkOptions: state.options.networkOptions,
+    nodes: state.graph.nodes,
     nodeCount: state.graph.nodes.length,
     edgeCount: state.graph.edges.length,
     queryStatus: state.gremlin.queryStatus,
+    colorMode: state.options.colorMode,
+    colorAssignments: state.options.colorAssignments,
+    legendCollapsed: state.options.legendCollapsed,
     connectionStatus: state.connection.status,
     connectionLoading: state.connection.loading
   };
