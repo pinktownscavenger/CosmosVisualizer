@@ -1,18 +1,9 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import { Button, TextField }  from '@material-ui/core';
-import {
-  ACTIONS,
-  EMPTY_GREMLIN_QUERY_ERROR,
-  QUERY_RUNNING_MESSAGE,
-  TOO_LONG_GREMLIN_QUERY_ERROR
-} from '../../constants';
-import { executeQuery, getConnection, switchConnection as requestConnectionSwitch } from '../../api/gremlinApi';
-import { onFetchQuery, onGraphRequestFailure } from '../../logics/actionHelper';
-import {
-  getQueryResultStatus,
-  isQueryTooLong
-} from '../../logics/queryFeedback';
+import { ACTIONS } from '../../constants';
+import { getConnection, switchConnection as requestConnectionSwitch } from '../../api/gremlinApi';
+import { runQuery } from '../../logics/graphOperations';
 import { analyzePartitionFanOut } from '../../logics/partitionAnalysis';
 import { ConnectionDialog } from '../Connection/ConnectionDialog';
 
@@ -122,33 +113,12 @@ export class Header extends React.Component {
   }
 
   sendQuery() {
-    const query = this.props.query.trim();
-    if (!query) {
-      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: EMPTY_GREMLIN_QUERY_ERROR });
-      return;
-    }
-    if (isQueryTooLong(query)) {
-      this.props.dispatch({ type: ACTIONS.SET_ERROR, payload: TOO_LONG_GREMLIN_QUERY_ERROR });
-      return;
-    }
-
-    this.props.dispatch({
-      type: ACTIONS.SET_QUERY_STATUS,
-      payload: { status: 'running', message: QUERY_RUNNING_MESSAGE }
-    });
-    executeQuery({ query, nodeLimit: this.props.nodeLimit }).then((response) => {
-      const summary = onFetchQuery(response, query, this.props.nodeLabels, this.props.dispatch, {
-        nodes: this.props.nodes,
-        edges: this.props.edges
-      });
-      const resultStatus = getQueryResultStatus(summary);
-      this.props.dispatch({
-        type: ACTIONS.SET_QUERY_STATUS,
-        payload: resultStatus
-      });
-    }).catch((error) => {
-      console.error('Error sending query:', error);
-      onGraphRequestFailure(error, this.props.dispatch);
+    return runQuery({
+      query: this.props.query,
+      nodeLimit: this.props.nodeLimit,
+      nodeLabels: this.props.nodeLabels,
+      current: { nodes: this.props.nodes, edges: this.props.edges },
+      dispatch: this.props.dispatch
     });
   }
 

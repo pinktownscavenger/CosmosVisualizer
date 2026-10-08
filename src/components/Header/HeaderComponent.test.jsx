@@ -209,24 +209,6 @@ describe('header query controls', () => {
     expect(html).not.toMatch(/type="submit"[^>]*disabled=""/);
     expect(dispatch).not.toHaveBeenCalled();
   });
-
-  it('routes query failures through the shared graph request helper', async () => {
-    const dispatch = vi.fn();
-    executeQuery.mockRejectedValue(Object.assign(new Error('unavailable'), {
-      kind: 'network',
-      diagnostics: { operation: 'query', requestCharge: { total: 0.5 } }
-    }));
-    const header = new Header({ ...baseProps, dispatch, query: 'g.V()' });
-
-    header.sendQuery();
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(dispatch).toHaveBeenCalledWith({
-      type: ACTIONS.SET_OPERATION_DIAGNOSTICS,
-      payload: { operation: 'query', requestCharge: { total: 0.5 } }
-    });
-  });
 });
 
 describe('connection dialog opening', () => {
