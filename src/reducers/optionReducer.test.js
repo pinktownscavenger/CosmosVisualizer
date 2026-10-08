@@ -104,4 +104,19 @@ describe('option reducer', () => {
     expect(reducer(cycling, { type: ACTIONS.ADD_QUERY_HISTORY, payload: 'g.V()' }).historyCursor).toBeNull();
     expect(reducer(cycling, { type: ACTIONS.CLEAR_QUERY_HISTORY }).historyCursor).toBeNull();
   });
+
+  it('draws tag nodes in neutral slate so red only signals errors', () => {
+    const tagGroup = reducer(undefined, { type: 'UNKNOWN' }).networkOptions.groups.tag;
+
+    expect(tagGroup.color).toEqual({ background: '#334155', border: '#94a3b8' });
+    expect(tagGroup.font.color).toBe('#f1f5f9');
+  });
+
+  it('keeps edge labels legible with background pills and dynamic curves', () => {
+    const { edges } = reducer(undefined, { type: 'UNKNOWN' }).networkOptions;
+
+    expect(edges.font.background).toBe('rgba(11, 17, 32, 0.92)');
+    expect(edges.font.strokeWidth).toBe(0);
+    expect(edges.smooth).toEqual({ type: 'dynamic' });
+  });
 });
