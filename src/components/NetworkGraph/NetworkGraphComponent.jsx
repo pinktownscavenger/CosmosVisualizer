@@ -11,8 +11,8 @@ import ZoomInIcon from '@material-ui/icons/ZoomIn';
 import ZoomOutIcon from '@material-ui/icons/ZoomOut';
 import CloseIcon from '@material-ui/icons/Close';
 import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
-import { ACTIONS, INSPECTOR_INSET } from '../../constants';
-import { applyGraphControl, getVisibleCenterOffset } from '../../logics/graphControls';
+import { ACTIONS } from '../../constants';
+import { applyGraphControl } from '../../logics/graphControls';
 import InspectorCard from '../Inspector/InspectorCard';
 import { GraphLegend } from './GraphLegend';
 import { changeColorMode } from '../../logics/graphOperations';
@@ -86,19 +86,37 @@ export const refreshNetworkNodeMeasurementsAfterFonts = (network, fontSet) => {
   });
 };
 
-export const keepNodeClearOfInspector = (network, nodeId, insetRight) => {
-  if (!network || !insetRight) {
+const CARD_CLEARANCE = 24;
+
+// Only nodes actually hidden by the card (plus a small margin) are moved, and they go to the canvas centre.
+export const keepNodeClearOfInspector = (network, nodeId, cardRect) => {
+  if (!network || !cardRect) {
     return;
   }
   const position = network.getPositions([nodeId])[nodeId];
   if (!position) {
     return;
   }
-  const canvasWidth = network.body && network.body.container ? network.body.container.clientWidth : 0;
-  if (network.canvasToDOM(position).x <= canvasWidth - insetRight) {
-    return;
+  const { x, y } = network.canvasToDOM(position);
+  const covered = x >= cardRect.left - CARD_CLEARANCE && x <= cardRect.right + CARD_CLEARANCE
+    && y >= cardRect.top - CARD_CLEARANCE && y <= cardRect.bottom + CARD_CLEARANCE;
+  if (covered) {
+    network.moveTo({ position, animation: true });
   }
-  network.moveTo({ position, offset: getVisibleCenterOffset(insetRight), animation: true });
+};
+
+// Layout box of the card inside the canvas; offset* ignores the card's enter animation transform.
+const inspectorCardRect = (workspace) => {
+  const card = workspace && workspace.querySelector('.inspector-card');
+  if (!card) {
+    return null;
+  }
+  return {
+    left: card.offsetLeft,
+    top: card.offsetTop,
+    right: card.offsetLeft + card.offsetWidth,
+    bottom: card.offsetTop + card.offsetHeight
+  };
 };
 
 // vis-network has no event for clicking empty canvas, so clear the selection on a bare click.
@@ -138,7 +156,7 @@ export class NetworkGraph extends React.Component{
       this.props.dispatch({ type: ACTIONS.SET_SELECTED_NODE, payload: nodeId });
       this.markSelected();
       if (nodeId !== null) {
-        keepNodeClearOfInspector(network, nodeId, INSPECTOR_INSET);
+        keepNodeClearOfInspector(network, nodeId, inspectorCardRect(this.networkRef.current && this.networkRef.current.parentNode));
       }
     });
 
@@ -187,14 +205,7 @@ export class NetworkGraph extends React.Component{
     applyGraphControl(network, command, {
       selectedNode: this.props.selectedNode,
       selectedEdge: this.props.selectedEdge,
-      networkOptions: this.props.networkOptions,
-      insetRight: this.isInspectorOpen() ? INSPECTOR_INSET : 0
-    });
-  }
-
-  isInspectorOpen() {
-    const hasItem = (selection) => Boolean(selection && Object.keys(selection).length > 0);
-    return hasItem(this.props.selectedNode) || hasItem(this.props.selectedEdge);
+      networkOptions: this.props.networkOptions
   }
 
   render(){

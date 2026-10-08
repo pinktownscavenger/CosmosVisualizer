@@ -73,38 +73,45 @@ describe('canvas click selection handling', () => {
 });
 
 describe('keeping the selection clear of the inspector', () => {
-  const makeNetwork = (domX) => ({
+  const card = { left: 1030, top: 12, right: 1390, bottom: 300 };
+  const makeNetwork = (dom) => ({
     getPositions: vi.fn(() => ({ 'node-1': { x: 50, y: 60 } })),
-    canvasToDOM: vi.fn(() => ({ x: domX, y: 100 })),
-    moveTo: vi.fn(),
-    body: { container: { clientWidth: 1400 } }
+    canvasToDOM: vi.fn(() => dom),
+    moveTo: vi.fn()
   });
 
-  it('pans a node that sits under the inspector into the visible region', () => {
-    const network = makeNetwork(1200);
+  it('moves a node hidden under the card to the middle of the canvas', () => {
+    const network = makeNetwork({ x: 1200, y: 100 });
 
-    keepNodeClearOfInspector(network, 'node-1', 384);
+    keepNodeClearOfInspector(network, 'node-1', card);
 
-    expect(network.moveTo).toHaveBeenCalledWith({
-      position: { x: 50, y: 60 },
-      offset: { x: -192, y: 0 },
-      animation: true
-    });
+    expect(network.moveTo).toHaveBeenCalledWith({ position: { x: 50, y: 60 }, animation: true });
   });
 
-  it('leaves a visible node where it is', () => {
-    const network = makeNetwork(400);
+  it('treats the area just around the card as covered', () => {
+    const network = makeNetwork({ x: 1015, y: 310 });
 
-    keepNodeClearOfInspector(network, 'node-1', 384);
+    keepNodeClearOfInspector(network, 'node-1', card);
 
-    expect(network.moveTo).not.toHaveBeenCalled();
+    expect(network.moveTo).toHaveBeenCalled();
   });
 
-  it('ignores missing networks and positions', () => {
-    expect(() => keepNodeClearOfInspector(null, 'node-1', 384)).not.toThrow();
-    const network = { ...makeNetwork(1200), getPositions: vi.fn(() => ({})) };
-    keepNodeClearOfInspector(network, 'node-1', 384);
-    expect(network.moveTo).not.toHaveBeenCalled();
+  it('leaves nodes beside or below the card where they are', () => {
+    for (const dom of [{ x: 400, y: 100 }, { x: 1200, y: 420 }]) {
+      const network = makeNetwork(dom);
+      keepNodeClearOfInspector(network, 'node-1', card);
+      expect(network.moveTo).not.toHaveBeenCalled();
+    }
+  });
+
+  it('ignores missing networks, positions and cards', () => {
+    expect(() => keepNodeClearOfInspector(null, 'node-1', card)).not.toThrow();
+    const missing = { ...makeNetwork({ x: 1200, y: 100 }), getPositions: vi.fn(() => ({})) };
+    keepNodeClearOfInspector(missing, 'node-1', card);
+    expect(missing.moveTo).not.toHaveBeenCalled();
+    const noCard = makeNetwork({ x: 1200, y: 100 });
+    keepNodeClearOfInspector(noCard, 'node-1', null);
+    expect(noCard.moveTo).not.toHaveBeenCalled();
   });
 });
 

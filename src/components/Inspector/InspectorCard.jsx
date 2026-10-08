@@ -1,6 +1,6 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import { ACTIONS, INSPECTOR_INSET } from '../../constants';
+import { ACTIONS } from '../../constants';
 import { getSelectedResultPayload } from '../../logics/selectedResult';
 import { getDisplayProperties } from '../../logics/propertyFormat';
 import { runTraversal } from '../../logics/graphOperations';
@@ -184,10 +184,7 @@ const normalizePartitionKey = (partitionKey) => {
 
 class ConnectedInspector extends React.Component {
   centerOn(nodeId) {
-    applyGraphControl(this.props.network, 'center-selection', {
-      selectedNode: { id: nodeId },
-      insetRight: INSPECTOR_INSET
-    });
+    applyGraphControl(this.props.network, 'center-selection', { selectedNode: { id: nodeId } });
   }
 
   render() {
