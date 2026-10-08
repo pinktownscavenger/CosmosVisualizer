@@ -89,6 +89,21 @@ async function submitTracked(client, kind, query, requests) {
   }
 }
 
+// Cosmos reports malformed traversals as script evaluation failures; those need an edit, not a retry.
+function isQueryRejection(error) {
+  return Boolean(error && /Gremlin Query (Syntax|Compilation) Error/i.test(error.message || ''));
+}
+
+function sendQueryRejection(res, operation, requests) {
+  sendError(
+    res,
+    400,
+    'COSMOS_QUERY_REJECTED',
+    'Cosmos DB rejected the Gremlin query. Check its syntax.',
+    buildOperationDiagnostics(operation, requests)
+  );
+}
+
 function sendManagerStateError(res, error) {
   if (error && error.code === 'NO_ACTIVE_CONNECTION') {
     sendError(
@@ -218,6 +233,10 @@ function createApp({ connectionManager, allowedOrigin = 'http://localhost:5173' 
       });
     } catch (error) {
       if (sendManagerStateError(res, error)) {
+        return;
+      }
+      if (isQueryRejection(error)) {
+        sendQueryRejection(res, operation, requests);
         return;
       }
       console.error('Error fetching graph data:', error);
