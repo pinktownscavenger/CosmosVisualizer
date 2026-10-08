@@ -19,11 +19,9 @@ export const getFitScale = (currentScale, canvasWidth, insetRight) => {
   return currentScale * (canvasWidth - insetRight) / canvasWidth;
 };
 
-const smoothEdges = {
-  smooth: {
-    type: 'continuous'
-  }
-};
+// Dynamic curves need physics to place their support points; paused physics falls back to continuous.
+const liveEdges = { smooth: { type: 'dynamic' } };
+const pausedEdges = { smooth: { type: 'continuous' } };
 
 export const applyGraphControl = (network, command, context = {}) => {
   if (!network) {
@@ -71,7 +69,7 @@ export const applyGraphControl = (network, command, context = {}) => {
 
   if (command === 'reset-layout') {
     if (context.networkOptions && context.networkOptions.physics) {
-      network.setOptions({ physics: context.networkOptions.physics, edges: smoothEdges });
+      network.setOptions({ physics: context.networkOptions.physics, edges: liveEdges });
     }
     network.stabilize(50);
     return;
@@ -79,7 +77,7 @@ export const applyGraphControl = (network, command, context = {}) => {
 
   if (command === 'physics') {
     const physics = context.enabled ? context.networkOptions && context.networkOptions.physics : false;
-    network.setOptions({ physics, edges: smoothEdges });
+    network.setOptions({ physics, edges: context.enabled ? liveEdges : pausedEdges });
     if (!context.enabled) {
       network.stopSimulation();
     }
