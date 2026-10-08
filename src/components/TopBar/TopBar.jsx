@@ -252,7 +252,11 @@ export class TopBar extends React.Component {
             ? <><CircularProgress size={16} color="inherit" /> Running…</>
             : `Run ${runShortcut()}`}
         </button>
-        <RequestChargeChip diagnostics={this.props.latestDiagnostics} />
+        <RequestChargeChip
+          diagnostics={this.props.latestDiagnostics}
+          session={this.props.session}
+          onResetSession={() => dispatch({ type: ACTIONS.RESET_SESSION_CHARGE })}
+        />
         <SettingsPopover
           nodeLimit={this.props.nodeLimit}
           isPhysicsEnabled={this.props.isPhysicsEnabled}
@@ -285,6 +289,7 @@ export default connect((state) => ({
   queryStatus: state.gremlin.queryStatus,
   queryStatusMessage: state.gremlin.queryStatusMessage,
   latestDiagnostics: state.gremlin.latestDiagnostics,
+  session: state.gremlin.session,
   nodes: state.graph.nodes,
   edges: state.graph.edges,
   network: state.graph.network,

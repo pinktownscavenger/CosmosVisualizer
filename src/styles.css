@@ -556,10 +556,39 @@ textarea:focus-visible,
 }
 
 .top-bar__ru {
-  width: 210px;
+  flex-direction: row;
+  align-items: stretch;
+  width: 330px;
+  padding: 0;
   border-color: #134e4a;
   background: #042f2e;
   font-family: "JetBrains Mono", monospace;
+}
+
+.top-bar__ru-half {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 12px;
+}
+
+.top-bar__ru-half:first-child {
+  flex: 1;
+}
+
+.top-bar__ru-session {
+  flex: 0 0 116px;
+  border: 0;
+  border-left: 1px solid #134e4a;
+  border-radius: 0 5px 5px 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+}
+
+.top-bar__ru-session:hover {
+  background: rgba(94, 234, 212, 0.08);
 }
 
 .top-bar__ru-total {
@@ -567,6 +596,7 @@ textarea:focus-visible,
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 18px;
+  white-space: nowrap;
 }
 
 .top-bar__ru .top-bar__secondary {

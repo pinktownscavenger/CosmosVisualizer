@@ -4,7 +4,7 @@ import { Simulate } from 'react-dom/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TopBar } from './TopBar';
 import { getConnectionLabel } from './ConnectionChip';
-import { getRequestChargeParts } from './RequestChargeChip';
+import { RequestChargeChip, getRequestChargeParts, getSessionParts } from './RequestChargeChip';
 import { ACTIONS } from '../../constants';
 import { executeQuery, getConnection, switchConnection } from '../../api/gremlinApi';
 import { mount, unmountAll } from './testUtils';
@@ -322,5 +322,36 @@ describe('top bar behaviour', () => {
     bar.onMessageAction('retry');
 
     expect(executeQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe('session RU total', () => {
+  it('formats the session tally', () => {
+    expect(getSessionParts({ total: 0, operations: 0, unpricedOperations: 0 })).toEqual({ total: 'Σ — RU', detail: '0 ops' });
+    expect(getSessionParts({ total: 41.2, operations: 12, unpricedOperations: 0 })).toEqual({ total: 'Σ 41.20 RU', detail: '12 ops' });
+    expect(getSessionParts({ total: 41.2, operations: 12, unpricedOperations: 2 })).toEqual({ total: 'Σ 41.20 RU', detail: '12 ops · 2 unpriced' });
+    expect(getSessionParts({ total: 3.75, operations: 1, unpricedOperations: 0 })).toEqual({ total: 'Σ 3.75 RU', detail: '1 op' });
+  });
+
+  it('resets the session total from its half of the chip', () => {
+    const onResetSession = vi.fn();
+    const root = mount(
+      <RequestChargeChip diagnostics={null} session={{ total: 2, operations: 1, unpricedOperations: 0 }} onResetSession={onResetSession} />
+    );
+    const button = root.querySelector('[aria-label^="Session total since this connection"]');
+
+    Simulate.click(button);
+
+    expect(onResetSession).toHaveBeenCalled();
+    expect(button.textContent).toContain('Σ 2.00 RU');
+  });
+
+  it('wires the reset to the store', () => {
+    const dispatch = vi.fn();
+    const root = mount(<TopBar {...baseProps} dispatch={dispatch} session={{ total: 2, operations: 1, unpricedOperations: 0 }} />);
+
+    Simulate.click(root.querySelector('[aria-label^="Session total since this connection"]'));
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_SESSION_CHARGE });
   });
 });
