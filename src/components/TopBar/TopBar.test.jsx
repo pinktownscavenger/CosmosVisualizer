@@ -192,20 +192,49 @@ describe('top bar behaviour', () => {
   it('clears the previous switch result before opening the dialog', () => {
     const dispatch = vi.fn();
     const bar = new TopBar({ ...baseProps, dispatch });
-    bar.setState = vi.fn();
 
     bar.openConnectionDialog();
 
-    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
-    expect(bar.setState).toHaveBeenCalledWith({ connectionDialogOpen: true });
+    expect(dispatch.mock.calls).toEqual([
+      [{ type: ACTIONS.RESET_CONNECTION_FEEDBACK }],
+      [{ type: ACTIONS.OPEN_CONNECTION_DIALOG }]
+    ]);
   });
 
   it('opens the connection dialog from the message-line action', () => {
-    const root = mount(<TopBar {...baseProps} connectionError="Probe failed" />);
+    const dispatch = vi.fn();
+    const root = mount(<TopBar {...baseProps} dispatch={dispatch} connectionError="Probe failed" />);
 
     Simulate.click(root.querySelector('.message-line__action'));
 
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.OPEN_CONNECTION_DIALOG });
+  });
+
+  it('renders the connection dialog when it is open in the store', () => {
+    mount(<TopBar {...baseProps} connectionDialogOpen={true} />);
     expect(document.body.textContent).toContain('Switch Cosmos connection');
+  });
+
+  it.each([
+    ['fixture', { mode: 'fixture', partitionKey: 'type' }, true],
+    ['cosmos', { mode: 'cosmos', endpointHost: 'a', database: 'b', container: 'c', partitionKey: 'type' }, false]
+  ])('seeds the demo graph on startup only in %s mode', async (_mode, connection, seeded) => {
+    const dispatch = vi.fn();
+    getConnection.mockResolvedValue({ status: 'connected', connection });
+    const bar = new TopBar({ ...baseProps, dispatch });
+
+    await bar.componentDidMount();
+
+    expect(dispatch.mock.calls.some(([action]) => action.type === ACTIONS.SEED_DEMO_GRAPH)).toBe(seeded);
+  });
+
+  it.each([
+    ['a connection switch is active', { connectionSwitching: true }],
+    ['disconnected', { connectionStatus: 'disconnected' }]
+  ])('does not run on Cmd+Enter while %s', (_label, props) => {
+    const root = mount(<TopBar {...baseProps} {...props} query="g.V()" />);
+    Simulate.keyDown(root.querySelector('textarea'), { key: 'Enter', metaKey: true });
+    expect(executeQuery).not.toHaveBeenCalled();
   });
 
   it('retries the last submitted query from the message-line action', async () => {
@@ -258,12 +287,13 @@ describe('top bar behaviour', () => {
   it('clears a failed switch result when the dialog closes', () => {
     const dispatch = vi.fn();
     const bar = new TopBar({ ...baseProps, dispatch });
-    bar.setState = vi.fn();
 
     bar.closeConnectionDialog();
 
-    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
-    expect(bar.setState).toHaveBeenCalledWith({ connectionDialogOpen: false });
+    expect(dispatch.mock.calls).toEqual([
+      [{ type: ACTIONS.RESET_CONNECTION_FEEDBACK }],
+      [{ type: ACTIONS.CLOSE_CONNECTION_DIALOG }]
+    ]);
   });
 
   it.each([
@@ -272,11 +302,10 @@ describe('top bar behaviour', () => {
   ])('does not open the connection dialog from the message line while %s', (_label, props) => {
     const dispatch = vi.fn();
     const bar = new TopBar({ ...baseProps, ...props, dispatch });
-    bar.setState = vi.fn();
 
     bar.onMessageAction('switch-connection');
 
-    expect(bar.setState).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalledWith({ type: ACTIONS.OPEN_CONNECTION_DIALOG });
   });
 
   it('does not retry while graph actions are unavailable', () => {

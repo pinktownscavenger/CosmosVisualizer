@@ -274,6 +274,7 @@ describe('connected inspector card', () => {
 
   it('hides once the graph is cleared under the selection', () => {
     const store = makeStore();
+    store.dispatch({ type: ACTIONS.SEED_DEMO_GRAPH });
     const nodeId = store.getState().graph.nodes[0].id;
     act(() => {
       store.dispatch({ type: ACTIONS.SET_SELECTED_NODE, payload: nodeId });

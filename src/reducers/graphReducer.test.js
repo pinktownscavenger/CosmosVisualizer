@@ -164,4 +164,38 @@ describe('graph reducer', () => {
     expect(nextState.nodes[0].label).toBe('person');
     expect(state.nodeHolder.update).toHaveBeenCalledWith({ id: 'person-1', label: 'person' });
   });
+
+  it('starts with an empty graph', () => {
+    const state = reducer(undefined, { type: '@@INIT' });
+    expect(state.nodes).toEqual([]);
+    expect(state.edges).toEqual([]);
+  });
+
+  it('seeds the demo graph once', () => {
+    const seeded = reducer(undefined, { type: ACTIONS.SEED_DEMO_GRAPH });
+    expect(seeded.nodes.map(node => node.id)).toEqual(['person-ada', 'company-engine', 'project-cosmos', 'dataset-users', 'tag-production']);
+    expect(seeded.edges).toHaveLength(5);
+
+    const again = reducer(seeded, { type: ACTIONS.SEED_DEMO_GRAPH });
+    expect(again.nodes).toHaveLength(5);
+    expect(again.edges).toHaveLength(5);
+  });
+
+  it('ignores duplicate ids within one batch of new nodes', () => {
+    const state = makeState();
+    const nextState = reducer(state, {
+      type: ACTIONS.ADD_NODES,
+      payload: [{ id: 'company-1', label: 'Acme' }, { id: 'company-1', label: 'Acme' }]
+    });
+
+    expect(nextState.nodes.map(node => node.id)).toEqual(['person-1', 'company-1']);
+    expect(state.nodeHolder.add).toHaveBeenCalledWith([{ id: 'company-1', label: 'Acme' }]);
+  });
+
+  it('refreshes the label of the selected node too', () => {
+    const selected = reducer(makeState(), { type: ACTIONS.SET_SELECTED_NODE, payload: 'person-1' });
+    const refreshed = reducer(selected, { type: ACTIONS.REFRESH_NODE_LABELS, payload: [{ type: 'person', field: 'aliases' }] });
+
+    expect(refreshed.selectedNode.label).toBe('Ada');
+  });
 });

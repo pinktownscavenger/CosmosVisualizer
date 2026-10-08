@@ -18,7 +18,8 @@ describe('connection reducer', () => {
       loading: true,
       switching: false,
       error: null,
-      probeDiagnostics: null
+      probeDiagnostics: null,
+      dialogOpen: false
     });
   });
 
@@ -52,7 +53,8 @@ describe('connection reducer', () => {
       loading: false,
       switching: false,
       error: null,
-      probeDiagnostics: { operation: 'connection-probe' }
+      probeDiagnostics: { operation: 'connection-probe' },
+      dialogOpen: false
     });
     expect(JSON.stringify(state)).not.toContain('secret-key');
     expect(JSON.stringify(state)).not.toContain('unexpected');
@@ -92,5 +94,13 @@ describe('connection reducer', () => {
       error: null,
       probeDiagnostics: null
     });
+  });
+
+  it('opens and closes the connection dialog', () => {
+    const closed = reducer(undefined, { type: '@@INIT' });
+    expect(closed.dialogOpen).toBe(false);
+    const open = reducer(closed, { type: ACTIONS.OPEN_CONNECTION_DIALOG });
+    expect(open.dialogOpen).toBe(true);
+    expect(reducer(open, { type: ACTIONS.CLOSE_CONNECTION_DIALOG }).dialogOpen).toBe(false);
   });
 });

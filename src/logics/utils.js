@@ -34,7 +34,7 @@ const uniqueBy = (list, getKey) => {
 };
 
 export const getDiffNodes = (newList, oldList) => {
-  return differenceBy(newList, oldList, (node) => node.id);
+  return differenceBy(uniqueBy(newList, (node) => node.id), oldList, (node) => node.id);
 };
 
 export const getDiffEdges = (newList, oldList) => {
