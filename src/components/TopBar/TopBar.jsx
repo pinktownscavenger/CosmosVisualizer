@@ -6,6 +6,7 @@ import { getConnection, switchConnection as requestConnectionSwitch } from '../.
 import { retryLastOperation, runQuery, seedDemoGraph } from '../../logics/graphOperations';
 import { getMessageLine } from '../../logics/messageLine';
 import { stepHistory } from '../../logics/queryHistory';
+import { scopeQueryToPartition } from '../../logics/partitionRewrite';
 import { applyGraphControl } from '../../logics/graphControls';
 import { ConnectionDialog } from '../Connection/ConnectionDialog';
 import { ConnectionChip, getConnectionLabel } from './ConnectionChip';
@@ -25,6 +26,33 @@ export class TopBar extends React.Component {
   constructor(props) {
     super(props);
     this.editorRef = React.createRef();
+  }
+
+  // The caret can only be placed once the rewritten query has rendered into the editor.
+  componentDidUpdate() {
+    const editor = this.editorRef.current;
+    if (this.pendingCaret != null && editor && editor.value.length >= this.pendingCaret) {
+      editor.focus();
+      editor.setSelectionRange(this.pendingCaret, this.pendingCaret);
+      this.pendingCaret = null;
+    }
+  }
+
+  scopeToPartition() {
+    const selected = this.props.selectedNode;
+    const value = selected && selected.partition && selected.partition.value != null
+      ? String(selected.partition.value)
+      : '';
+    const scoped = scopeQueryToPartition(
+      this.props.query,
+      this.props.connection && this.props.connection.partitionKey,
+      value
+    );
+    if (!scoped) {
+      return;
+    }
+    this.pendingCaret = scoped.cursor;
+    this.onQueryChanged(scoped.query);
   }
 
   componentDidMount() {
@@ -167,6 +195,10 @@ export class TopBar extends React.Component {
         fallbackQuery: this.props.query
       });
     }
+    if (action === 'scope-partition') {
+      this.scopeToPartition();
+      return undefined;
+    }
     if (action === 'switch-connection') {
       if (!this.connectionSwitchDisabled()) {
         this.openConnectionDialog();
@@ -292,6 +324,7 @@ export default connect((state) => ({
   session: state.gremlin.session,
   nodes: state.graph.nodes,
   edges: state.graph.edges,
+  selectedNode: state.graph.selectedNode,
   network: state.graph.network,
   nodeLabels: state.options.nodeLabels,
   nodeLimit: state.options.nodeLimit,

@@ -1,6 +1,7 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import ReactDOMServer from 'react-dom/server';
-import { Simulate } from 'react-dom/test-utils';
+import { act, Simulate } from 'react-dom/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TopBar } from './TopBar';
 import { getConnectionLabel } from './ConnectionChip';
@@ -353,5 +354,52 @@ describe('session RU total', () => {
     Simulate.click(root.querySelector('[aria-label^="Session total since this connection"]'));
 
     expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_SESSION_CHARGE });
+  });
+});
+
+describe('scope to partition', () => {
+  it('rewrites the query with the selected node partition value and never runs it', () => {
+    const dispatch = vi.fn();
+    const bar = new TopBar({
+      ...baseProps,
+      dispatch,
+      query: 'g.V().limit(25)',
+      selectedNode: { id: 'project-cosmos', partition: { name: 'type', value: 'project' } }
+    });
+
+    bar.onMessageAction('scope-partition');
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_QUERY, payload: "g.V().has('type', 'project').limit(25)" });
+    expect(executeQuery).not.toHaveBeenCalled();
+  });
+
+  it('leaves the value empty without a selected node', () => {
+    const dispatch = vi.fn();
+    const bar = new TopBar({ ...baseProps, dispatch, query: 'g.V()', selectedNode: {} });
+
+    bar.onMessageAction('scope-partition');
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_QUERY, payload: "g.V().has('type', '')" });
+  });
+
+  it('puts the caret inside the inserted quotes once the new query renders', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    let bar;
+    act(() => {
+      bar = ReactDOM.render(<TopBar {...baseProps} query="g.V().limit(25)" />, container);
+    });
+
+    act(() => {
+      bar.onMessageAction('scope-partition');
+    });
+    act(() => {
+      ReactDOM.render(<TopBar {...baseProps} query="g.V().has('type', '').limit(25)" />, container);
+    });
+
+    const textarea = container.querySelector('textarea');
+    expect(document.activeElement).toBe(textarea);
+    expect(textarea.selectionStart).toBe("g.V().has('type', '".length);
+    ReactDOM.unmountComponentAtNode(container);
   });
 });
