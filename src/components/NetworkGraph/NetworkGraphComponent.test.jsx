@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { GraphHint, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
+import { GraphCounts, GraphHint, NetworkGraph, clearGraph, handleCanvasClick, keepNodeClearOfInspector, refreshNetworkNodeMeasurementsAfterFonts } from './NetworkGraphComponent';
 import { ACTIONS } from '../../constants';
 
 describe('graph hint', () => {
@@ -105,5 +105,31 @@ describe('keeping the selection clear of the inspector', () => {
     const network = { ...makeNetwork(1200), getPositions: vi.fn(() => ({})) };
     keepNodeClearOfInspector(network, 'node-1', 384);
     expect(network.moveTo).not.toHaveBeenCalled();
+  });
+});
+
+describe('canvas overlays', () => {
+  it('clears the graph and its diagnostics without clearing query history', () => {
+    const dispatch = vi.fn();
+
+    clearGraph(dispatch);
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.CLEAR_GRAPH });
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS });
+    expect(dispatch).not.toHaveBeenCalledWith({ type: ACTIONS.CLEAR_QUERY_HISTORY });
+  });
+
+  it('counts nodes and edges with singular forms', () => {
+    expect(ReactDOMServer.renderToStaticMarkup(<GraphCounts nodes={5} edges={5} />)).toContain('5 nodes · 5 edges');
+    expect(ReactDOMServer.renderToStaticMarkup(<GraphCounts nodes={1} edges={1} />)).toContain('1 node · 1 edge');
+  });
+
+  it('hides the hint after the first selection', () => {
+    const graph = new NetworkGraph({ dispatch: vi.fn() });
+    expect(graph.isHintVisible()).toBe(true);
+
+    graph.state = { ...graph.state, hasSelectedOnce: true };
+
+    expect(graph.isHintVisible()).toBe(false);
   });
 });
