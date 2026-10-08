@@ -147,6 +147,20 @@ describe('server app', () => {
     console.error.mockRestore();
   });
 
+  it('reports a Cosmos syntax rejection as a 400 the client can offer to edit', async () => {
+    const error = Object.assign(new Error('ScriptEvaluationError: Gremlin Query Syntax Error: unexpected token'), { statusCode: 597 });
+    const submit = vi.fn().mockRejectedValue(error);
+    const app = createApp({ connectionManager: makeManager(makeClient(submit)) });
+
+    const response = await request(app).post('/query').send({ query: 'g.V(' }).expect(400);
+
+    expect(response.body.error).toEqual({
+      code: 'COSMOS_QUERY_REJECTED',
+      message: 'Cosmos DB rejected the Gremlin query. Check its syntax.'
+    });
+    expect(response.body.diagnostics.operation).toBe('query');
+  });
+
   it('rejects invalid traversal requests', async () => {
     const submit = vi.fn();
     const app = createApp({ connectionManager: makeManager(makeClient(submit)) });

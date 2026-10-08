@@ -6,7 +6,8 @@ const initialState = {
   loading: true,
   switching: false,
   error: null,
-  probeDiagnostics: null
+  probeDiagnostics: null,
+  dialogOpen: false
 };
 
 const sanitizeConnection = (connection) => {
@@ -67,6 +68,10 @@ export const reducer = (state = initialState, action) => {
         error: payload.message || 'Could not switch connection',
         probeDiagnostics: payload.diagnostics || null
       };
+    case ACTIONS.OPEN_CONNECTION_DIALOG:
+      return { ...state, dialogOpen: true };
+    case ACTIONS.CLOSE_CONNECTION_DIALOG:
+      return { ...state, dialogOpen: false };
     case ACTIONS.RESET_CONNECTION_FEEDBACK:
       return { ...state, error: null, probeDiagnostics: null };
     default:

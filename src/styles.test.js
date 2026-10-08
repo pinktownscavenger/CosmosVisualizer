@@ -32,6 +32,11 @@ describe('layout stylesheet contracts', () => {
     expect(declarationsFor('.top-bar__ru .top-bar__secondary')).toContain('max-width: 100%');
   });
 
+  it('uses a strong border token for the query editor', () => {
+    expect(declarationsFor(':root')).toContain('--color-border-strong: #64748b');
+    expect(declarationsFor('.query-editor')).toContain('border: 1px solid var(--color-border-strong)');
+  });
+
   it('themes scrollbars for the dark workbench surfaces', () => {
     expect(stylesheet).toContain('scrollbar-color:');
     expect(stylesheet).toContain('::-webkit-scrollbar-thumb');
