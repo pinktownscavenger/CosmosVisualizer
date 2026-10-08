@@ -11,7 +11,9 @@ const initialState = {
 export const reducer =  (state=initialState, action)=>{
   switch (action.type){
     case ACTIONS.SET_QUERY: {
-      return { ...state, query: action.payload, error: null }
+      // Editing retires the last result; the message line can then show advisories for the new text.
+      const queryStatus = state.queryStatus === 'running' ? 'running' : 'idle';
+      return { ...state, query: action.payload, error: null, queryStatus }
     }
     case ACTIONS.SET_ERROR: {
       const error = typeof action.payload === 'string' ? { message: action.payload } : action.payload || null;

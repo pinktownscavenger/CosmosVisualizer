@@ -76,4 +76,14 @@ describe('gremlin reducer', () => {
       queryStatusMessage: 'Enter a Gremlin query before executing.'
     });
   });
+
+  it('returns a finished or failed status to idle when the query is edited', () => {
+    const done = reducer(undefined, { type: ACTIONS.SET_QUERY_STATUS, payload: { status: 'success', message: '5 nodes, 5 edges · 2 new' } });
+    const edited = reducer(done, { type: ACTIONS.SET_QUERY, payload: 'g.V().limit(2)' });
+    expect(edited.queryStatus).toBe('idle');
+    expect(edited.queryStatusMessage).toBe('5 nodes, 5 edges · 2 new');
+
+    const running = reducer(undefined, { type: ACTIONS.SET_QUERY_STATUS, payload: { status: 'running', message: 'Executing Gremlin traversal...' } });
+    expect(reducer(running, { type: ACTIONS.SET_QUERY, payload: 'g.V()' }).queryStatus).toBe('running');
+  });
 });

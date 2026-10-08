@@ -254,4 +254,36 @@ describe('top bar behaviour', () => {
     cycling.onQueryChanged('g.V().limit(20)');
     expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_HISTORY_CURSOR, payload: null });
   });
+
+  it('clears a failed switch result when the dialog closes', () => {
+    const dispatch = vi.fn();
+    const bar = new TopBar({ ...baseProps, dispatch });
+    bar.setState = vi.fn();
+
+    bar.closeConnectionDialog();
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
+    expect(bar.setState).toHaveBeenCalledWith({ connectionDialogOpen: false });
+  });
+
+  it.each([
+    ['a query is running', { queryStatus: 'running' }],
+    ['a switch is in progress', { connectionSwitching: true }]
+  ])('does not open the connection dialog from the message line while %s', (_label, props) => {
+    const dispatch = vi.fn();
+    const bar = new TopBar({ ...baseProps, ...props, dispatch });
+    bar.setState = vi.fn();
+
+    bar.onMessageAction('switch-connection');
+
+    expect(bar.setState).not.toHaveBeenCalled();
+  });
+
+  it('does not retry while graph actions are unavailable', () => {
+    const bar = new TopBar({ ...baseProps, connectionStatus: 'disconnected' });
+
+    bar.onMessageAction('retry');
+
+    expect(executeQuery).not.toHaveBeenCalled();
+  });
 });

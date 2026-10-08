@@ -9,6 +9,9 @@ const errorLine = ({ message, action, actionLabel }) => {
   return line;
 };
 
+// A result the user just produced outranks advisories about the text they ran.
+const FRESH_RESULT_STATUSES = ['running', 'success', 'empty'];
+
 // The top bar has room for exactly one message; this picks it by priority.
 export const getMessageLine = ({ gremlin, connection }) => {
   if (gremlin.error) {
@@ -21,6 +24,10 @@ export const getMessageLine = ({ gremlin, connection }) => {
       action: 'switch-connection',
       actionLabel: 'Switch connection'
     });
+  }
+
+  if (FRESH_RESULT_STATUSES.includes(gremlin.queryStatus)) {
+    return { tone: gremlin.queryStatus, text: gremlin.queryStatusMessage };
   }
 
   const advisories = connection.status === 'connected' && connection.connection

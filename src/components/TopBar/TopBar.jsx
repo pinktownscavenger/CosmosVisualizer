@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import { CircularProgress } from '@material-ui/core';
 import { ACTIONS } from '../../constants';
 import { getConnection, switchConnection as requestConnectionSwitch } from '../../api/gremlinApi';
-import { getLastSubmittedQuery, runQuery } from '../../logics/graphOperations';
+import { retryLastOperation, runQuery } from '../../logics/graphOperations';
 import { getMessageLine } from '../../logics/messageLine';
 import { stepHistory } from '../../logics/queryHistory';
 import { applyGraphControl } from '../../logics/graphControls';
@@ -75,6 +75,16 @@ export class TopBar extends React.Component {
     this.setState({ connectionDialogOpen: true });
   }
 
+  // A failed probe changed nothing, so its error should not outlive the dialog.
+  closeConnectionDialog() {
+    this.props.dispatch({ type: ACTIONS.RESET_CONNECTION_FEEDBACK });
+    this.setState({ connectionDialogOpen: false });
+  }
+
+  connectionSwitchDisabled() {
+    return this.props.queryStatus === 'running' || this.props.connectionLoading || this.props.connectionSwitching;
+  }
+
   graphActionsDisabled() {
     return this.props.queryStatus === 'running'
       || this.props.connectionLoading
@@ -130,10 +140,21 @@ export class TopBar extends React.Component {
       return undefined;
     }
     if (action === 'retry' || action === 'wait-and-retry') {
-      return this.runGraphQuery(getLastSubmittedQuery() || this.props.query);
+      if (this.graphActionsDisabled()) {
+        return undefined;
+      }
+      return retryLastOperation({
+        nodeLimit: this.props.nodeLimit,
+        nodeLabels: this.props.nodeLabels,
+        current: { nodes: this.props.nodes, edges: this.props.edges },
+        dispatch: this.props.dispatch,
+        fallbackQuery: this.props.query
+      });
     }
     if (action === 'switch-connection') {
-      this.openConnectionDialog();
+      if (!this.connectionSwitchDisabled()) {
+        this.openConnectionDialog();
+      }
       return undefined;
     }
     if (action === 'check-server') {
@@ -185,7 +206,7 @@ export class TopBar extends React.Component {
         <ConnectionChip
           label={connectionLabel}
           partitionKey={partitionKey}
-          disabled={isRunning || this.props.connectionLoading || this.props.connectionSwitching}
+          disabled={this.connectionSwitchDisabled()}
           onClick={() => this.openConnectionDialog()}
         />
         <div className="top-bar__editor">
@@ -234,7 +255,7 @@ export class TopBar extends React.Component {
           switching={this.props.connectionSwitching}
           error={this.props.connectionError}
           probeDiagnostics={this.props.probeDiagnostics}
-          onClose={() => this.setState({ connectionDialogOpen: false })}
+          onClose={() => this.closeConnectionDialog()}
           onSubmit={this.switchConnection.bind(this)}
         />
       </header>

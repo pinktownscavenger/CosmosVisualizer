@@ -10,6 +10,7 @@ import { getQueryResultStatus, isQueryTooLong } from './queryFeedback';
 import { makeTraversalHistoryQuery } from './utils';
 
 let lastSubmittedQuery = null;
+let lastOperation = null;
 
 export const getLastSubmittedQuery = () => lastSubmittedQuery;
 
@@ -37,11 +38,13 @@ export const runQuery = ({ query, nodeLimit, nodeLabels, current, dispatch }) =>
   }
 
   lastSubmittedQuery = trimmed;
+  lastOperation = { kind: 'query', query: trimmed };
   dispatch({ type: ACTIONS.SET_QUERY_STATUS, payload: { status: 'running', message: QUERY_RUNNING_MESSAGE } });
   return publishResult(executeQuery({ query: trimmed, nodeLimit }), trimmed, nodeLabels, current, dispatch);
 };
 
 export const runTraversal = ({ nodeId, direction, nodeLimit, nodeLabels, current, dispatch }) => {
+  lastOperation = { kind: 'traversal', nodeId, direction };
   dispatch({
     type: ACTIONS.SET_QUERY_STATUS,
     payload: { status: 'running', message: `Traversing ${direction === 'in' ? 'inbound' : 'outbound'} edges...` }
@@ -53,4 +56,13 @@ export const runTraversal = ({ nodeId, direction, nodeLimit, nodeLabels, current
     current,
     dispatch
   );
+};
+
+export const retryLastOperation = ({ nodeLimit, nodeLabels, current, dispatch, fallbackQuery }) => {
+  if (lastOperation && lastOperation.kind === 'traversal') {
+    const { nodeId, direction } = lastOperation;
+    return runTraversal({ nodeId, direction, nodeLimit, nodeLabels, current, dispatch });
+  }
+  const query = lastOperation ? lastOperation.query : fallbackQuery;
+  return runQuery({ query, nodeLimit, nodeLabels, current, dispatch });
 };
