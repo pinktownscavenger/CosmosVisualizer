@@ -146,5 +146,7 @@ describe('option reducer', () => {
     expect(Object.keys(groups)).toEqual(['tag']);
     expect(groups.tag.shape).toBe('box');
     expect(groups.tag.color).toBeUndefined();
+    expect(groups.tag.font.color).toBe('#0b1120');
+    expect(groups.tag.font.strokeWidth).toBe(0);
   });
 });

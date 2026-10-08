@@ -64,11 +64,11 @@ const initialState = {
           left: 20
         },
         font: {
-          color: '#f1f5f9',
+          // Dark ink reads on every palette fill (blue, orange, aqua and the slate Other).
+          color: '#0b1120',
           face: 'JetBrains Mono',
           size: 10,
-          strokeColor: '#0f172a',
-          strokeWidth: 2
+          strokeWidth: 0
         }
       }
     },
