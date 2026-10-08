@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { applyGraphControl, getFitScale, getSelectedGraphItemId, getVisibleCenterOffset } from './graphControls';
+import { applyGraphControl, getSelectedGraphItemId } from './graphControls';
 
 const makeNetwork = () => ({
   fit: vi.fn(),
@@ -50,45 +50,15 @@ describe('graph controls', () => {
     expect(network.stopSimulation).toHaveBeenCalled();
   });
 
-  it('offsets the view centre by half the covered strip', () => {
-    expect(getVisibleCenterOffset(384)).toEqual({ x: -192, y: 0 });
-    expect(getVisibleCenterOffset(0)).toEqual({ x: 0, y: 0 });
-  });
-
-  it('shrinks the fit scale to the uncovered width', () => {
-    expect(getFitScale(1, 1400, 384)).toBeCloseTo(1016 / 1400);
-    expect(getFitScale(2, 1400, 0)).toBe(2);
-  });
-
-  it('fits into the visible region when the inspector covers the right side', () => {
-    const network = {
-      ...makeNetwork(),
-      getScale: vi.fn(() => 1),
-      getViewPosition: vi.fn(() => ({ x: 10, y: 20 })),
-      body: { container: { clientWidth: 1400 } }
-    };
-
-    applyGraphControl(network, 'fit', { insetRight: 384 });
-
-    expect(network.fit).toHaveBeenCalledWith({ animation: false });
-    expect(network.moveTo).toHaveBeenCalledWith({
-      position: { x: 10, y: 20 },
-      scale: expect.closeTo(1016 / 1400),
-      offset: { x: -192, y: 0 },
-      animation: true
-    });
-  });
-
-  it('centres the selection in the visible region when the inspector is open', () => {
-    const network = makeNetwork();
+  it('centres the selection in the middle of the canvas and fits the whole canvas, even with the inspector open', () => {
+    const network = { ...makeNetwork(), getViewPosition: vi.fn(), body: { container: { clientWidth: 1400 } } };
 
     applyGraphControl(network, 'center-selection', { selectedNode: { id: 'person-1' }, insetRight: 384 });
+    applyGraphControl(network, 'fit', { selectedNode: { id: 'person-1' }, insetRight: 384 });
 
-    expect(network.focus).toHaveBeenCalledWith('person-1', {
-      animation: true,
-      scale: 1.1,
-      offset: { x: -192, y: 0 }
-    });
+    expect(network.focus).toHaveBeenCalledWith('person-1', { animation: true, scale: 1.1 });
+    expect(network.fit).toHaveBeenCalledWith({ animation: true });
+    expect(network.moveTo).not.toHaveBeenCalled();
   });
 
   it('restores dynamic curves when physics resumes or the layout resets', () => {
