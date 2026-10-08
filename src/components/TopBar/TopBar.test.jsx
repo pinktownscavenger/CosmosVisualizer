@@ -72,6 +72,13 @@ describe('top bar rendering', () => {
     expect(html).toMatch(/<button[^>]*top-bar__run[^>]*disabled=""|<button[^>]*disabled=""[^>]*top-bar__run/);
   });
 
+  it('draws the settings control as a 22px icon rather than a text glyph', () => {
+    const button = render().match(/<button[^>]*aria-label="Settings"[^>]*>([\s\S]*?)<\/button>/);
+    expect(button[1]).toContain('<svg');
+    expect(button[1]).toContain('font-size:22px');
+    expect(button[1]).not.toContain('⚙');
+  });
+
   it('shows the RU chip before any operation', () => {
     const html = render();
     expect(html).toContain('— RU');
