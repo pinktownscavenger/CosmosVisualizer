@@ -171,15 +171,6 @@ describe('graph reducer', () => {
     expect(state.edges).toEqual([]);
   });
 
-  it('seeds the demo graph once', () => {
-    const seeded = reducer(undefined, { type: ACTIONS.SEED_DEMO_GRAPH });
-    expect(seeded.nodes.map(node => node.id)).toEqual(['person-ada', 'company-engine', 'project-cosmos', 'dataset-users', 'tag-production']);
-    expect(seeded.edges).toHaveLength(5);
-
-    const again = reducer(seeded, { type: ACTIONS.SEED_DEMO_GRAPH });
-    expect(again.nodes).toHaveLength(5);
-    expect(again.edges).toHaveLength(5);
-  });
 
   it('ignores duplicate ids within one batch of new nodes', () => {
     const state = makeState();
@@ -197,5 +188,25 @@ describe('graph reducer', () => {
     const refreshed = reducer(selected, { type: ACTIONS.REFRESH_NODE_LABELS, payload: [{ type: 'person', field: 'aliases' }] });
 
     expect(refreshed.selectedNode.label).toBe('Ada');
+  });
+
+  it('restyles nodes in state and the DataSet in one batch', () => {
+    const state = makeState();
+    const style = { color: { background: '#3987e5' }, shapeProperties: { borderDashes: false } };
+    const next = reducer(state, { type: ACTIONS.RESTYLE_NODES, payload: [{ id: 'person-1', ...style }] });
+
+    expect(next.nodes[0]).toMatchObject({ id: 'person-1', label: 'person', ...style });
+    expect(state.nodeHolder.update).toHaveBeenCalledTimes(1);
+    expect(state.nodeHolder.update).toHaveBeenCalledWith([{ id: 'person-1', ...style }]);
+  });
+
+  it('seeds the styled nodes it is given', () => {
+    const seeded = reducer(undefined, {
+      type: ACTIONS.SEED_DEMO_GRAPH,
+      payload: { nodes: [{ id: 'n1', color: { background: '#3987e5' } }], edges: [{ id: 'e1', from: 'n1', to: 'n1' }] }
+    });
+
+    expect(seeded.nodes).toEqual([{ id: 'n1', color: { background: '#3987e5' } }]);
+    expect(seeded.edges).toHaveLength(1);
   });
 });

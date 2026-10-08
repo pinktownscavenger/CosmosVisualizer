@@ -7,6 +7,7 @@ import { combineReducers, createStore } from 'redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import InspectorCard, { Inspector } from './InspectorCard';
 import { ACTIONS } from '../../constants';
+import { seedDemoGraph } from '../../logics/graphOperations';
 import { reducer as graphReducer } from '../../reducers/graphReducer';
 import { reducer as optionReducer } from '../../reducers/optionReducer';
 import { reducer as gremlinReducer } from '../../reducers/gremlinReducer';
@@ -296,7 +297,7 @@ describe('connected inspector card', () => {
 
   it('hides once the graph is cleared under the selection', () => {
     const store = makeStore();
-    store.dispatch({ type: ACTIONS.SEED_DEMO_GRAPH });
+    seedDemoGraph({ colorMode: 'type', colorAssignments: { type: {}, partition: {} }, dispatch: store.dispatch });
     const nodeId = store.getState().graph.nodes[0].id;
     act(() => {
       store.dispatch({ type: ACTIONS.SET_SELECTED_NODE, payload: nodeId });

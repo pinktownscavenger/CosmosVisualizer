@@ -1,7 +1,6 @@
 import vis from 'vis-network';
 import { ACTIONS } from '../constants';
 import { getDiffNodes, getDiffEdges, findNodeById, getNodeLabel } from '../logics/utils';
-import { demoEdges, demoNodes } from '../demoGraph';
 
 const keyBy = (list, key) => list.reduce((result, item) => {
   result[item[key]] = item;
@@ -54,7 +53,14 @@ export const reducer =  (state=initialState, action)=>{
       return addEdges(state, action.payload);
     }
     case ACTIONS.SEED_DEMO_GRAPH: {
-      return addEdges(addNodes(state, demoNodes), demoEdges);
+      return addEdges(addNodes(state, action.payload.nodes), action.payload.edges);
+    }
+    case ACTIONS.RESTYLE_NODES: {
+      const styles = new Map(action.payload.map(style => [style.id, style]));
+      state.nodeHolder.update(action.payload);
+      const restyle = node => (styles.has(node.id) ? { ...node, ...styles.get(node.id) } : node);
+      const selectedNode = state.selectedNode && styles.has(state.selectedNode.id) ? restyle(state.selectedNode) : state.selectedNode;
+      return { ...state, nodes: state.nodes.map(restyle), selectedNode };
     }
     case ACTIONS.SET_SELECTED_NODE: {
       const nodeId = action.payload;

@@ -8,6 +8,8 @@ import { executeQuery, executeTraversal } from '../api/gremlinApi';
 import { onFetchQuery, onGraphRequestFailure } from './actionHelper';
 import { getQueryResultStatus, isQueryTooLong } from './queryFeedback';
 import { makeTraversalHistoryQuery } from './utils';
+import { styleNodes } from './nodeColors';
+import { demoEdges, demoNodes } from '../demoGraph';
 
 let lastSubmittedQuery = null;
 let lastOperation = null;
@@ -65,4 +67,21 @@ export const retryLastOperation = ({ nodeLimit, nodeLabels, current, dispatch, f
   }
   const query = lastOperation ? lastOperation.query : fallbackQuery;
   return runQuery({ query, nodeLimit, nodeLabels, current, dispatch });
+};
+
+export const seedDemoGraph = ({ colorMode, colorAssignments, dispatch }) => {
+  const styled = styleNodes(demoNodes, colorMode, colorAssignments);
+  dispatch({ type: ACTIONS.SET_COLOR_ASSIGNMENTS, payload: styled.colorAssignments });
+  dispatch({ type: ACTIONS.SEED_DEMO_GRAPH, payload: { nodes: styled.nodes, edges: demoEdges } });
+};
+
+// Restyles every node in one batch so switching modes never moves the layout.
+export const changeColorMode = ({ mode, nodes, colorAssignments, dispatch }) => {
+  const styled = styleNodes(nodes, mode, colorAssignments);
+  dispatch({ type: ACTIONS.SET_COLOR_MODE, payload: mode });
+  dispatch({ type: ACTIONS.SET_COLOR_ASSIGNMENTS, payload: styled.colorAssignments });
+  dispatch({
+    type: ACTIONS.RESTYLE_NODES,
+    payload: styled.nodes.map(({ id, color, shapeProperties }) => ({ id, color, shapeProperties }))
+  });
 };

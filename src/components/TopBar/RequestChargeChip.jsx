@@ -33,12 +33,36 @@ export const getRequestChargeParts = (diagnostics) => {
   return { total: `${formatCharge(requestCharge.total)} RU`, detail };
 };
 
-export const RequestChargeChip = ({ diagnostics }) => {
-  const { total, detail } = getRequestChargeParts(diagnostics);
+export const getSessionParts = (session) => {
+  if (!session || session.operations === 0) {
+    return { total: 'Σ — RU', detail: '0 ops' };
+  }
+  const operations = `${session.operations} ${session.operations === 1 ? 'op' : 'ops'}`;
+  const unpriced = session.unpricedOperations > 0 ? ` · ${session.unpricedOperations} unpriced` : '';
+  return { total: `Σ ${formatCharge(session.total)} RU`, detail: `${operations}${unpriced}` };
+};
+
+const SESSION_HINT = 'Session total since this connection. Click to reset.';
+
+export const RequestChargeChip = ({ diagnostics, session, onResetSession }) => {
+  const last = getRequestChargeParts(diagnostics);
+  const sessionParts = getSessionParts(session);
   return (
-    <div className="top-bar__control top-bar__ru" role="status" aria-label="Latest operation request charge" title={detail}>
-      <span className="top-bar__ru-total">{total}</span>
-      <span className="top-bar__secondary">{detail}</span>
+    <div className="top-bar__control top-bar__ru">
+      <div className="top-bar__ru-half" role="status" aria-label="Latest operation request charge" title={last.detail}>
+        <span className="top-bar__ru-total">{last.total}</span>
+        <span className="top-bar__secondary">{last.detail}</span>
+      </div>
+      <button
+        type="button"
+        className="top-bar__ru-half top-bar__ru-session"
+        aria-label={`${SESSION_HINT} ${sessionParts.total}, ${sessionParts.detail}`}
+        title={SESSION_HINT}
+        onClick={onResetSession}
+      >
+        <span className="top-bar__ru-total">{sessionParts.total}</span>
+        <span className="top-bar__secondary">{sessionParts.detail}</span>
+      </button>
     </div>
   );
 };

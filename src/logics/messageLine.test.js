@@ -65,7 +65,9 @@ describe('message line', () => {
 
     expect(line).toEqual({
       tone: 'advisory',
-      text: 'This traversal starts with g.V() without an early type partition predicate and may scan multiple partitions.'
+      text: 'This traversal starts with g.V() without an early type partition predicate and may scan multiple partitions.',
+      action: 'scope-partition',
+      actionLabel: 'Scope to partition'
     });
   });
 
@@ -89,5 +91,16 @@ describe('message line', () => {
       ...base,
       gremlin: { ...base.gremlin, query: 'g.V().limit(25)', queryStatus, queryStatusMessage: '5 nodes, 5 edges · 2 new' }
     })).toEqual({ tone: queryStatus, text: '5 nodes, 5 edges · 2 new' });
+  });
+
+  it('offers no fix for inbound-only advisories', () => {
+    const line = getMessageLine({ ...base, gremlin: { ...base.gremlin, query: "g.V('a').has('type','x').in()" } });
+
+    expect(line.tone).toBe('advisory');
+    expect(line.action).toBeUndefined();
+  });
+
+  it('offers the fix for an id lookup without its partition', () => {
+    expect(getMessageLine({ ...base, gremlin: { ...base.gremlin, query: "g.V('a').out()" } }).action).toBe('scope-partition');
   });
 });

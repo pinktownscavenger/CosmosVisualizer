@@ -3,9 +3,10 @@ import { connect } from 'react-redux';
 import { CircularProgress } from '@material-ui/core';
 import { ACTIONS } from '../../constants';
 import { getConnection, switchConnection as requestConnectionSwitch } from '../../api/gremlinApi';
-import { retryLastOperation, runQuery } from '../../logics/graphOperations';
+import { retryLastOperation, runQuery, seedDemoGraph } from '../../logics/graphOperations';
 import { getMessageLine } from '../../logics/messageLine';
 import { stepHistory } from '../../logics/queryHistory';
+import { scopeQueryToPartition } from '../../logics/partitionRewrite';
 import { applyGraphControl } from '../../logics/graphControls';
 import { ConnectionDialog } from '../Connection/ConnectionDialog';
 import { ConnectionChip, getConnectionLabel } from './ConnectionChip';
@@ -27,10 +28,41 @@ export class TopBar extends React.Component {
     this.editorRef = React.createRef();
   }
 
+  // The caret can only be placed once the rewritten query has rendered into the editor.
+  componentDidUpdate() {
+    const editor = this.editorRef.current;
+    if (this.pendingCaret != null && editor && editor.value.length >= this.pendingCaret) {
+      editor.focus();
+      editor.setSelectionRange(this.pendingCaret, this.pendingCaret);
+      this.pendingCaret = null;
+    }
+  }
+
+  scopeToPartition() {
+    const selected = this.props.selectedNode;
+    const value = selected && selected.partition && selected.partition.value != null
+      ? selected.partition.value
+      : '';
+    const scoped = scopeQueryToPartition(
+      this.props.query,
+      this.props.connection && this.props.connection.partitionKey,
+      value
+    );
+    if (!scoped) {
+      return;
+    }
+    this.pendingCaret = scoped.cursor;
+    this.onQueryChanged(scoped.query);
+  }
+
   componentDidMount() {
     return this.loadConnection().then((payload) => {
       if (payload && payload.connection && payload.connection.mode === 'fixture') {
-        this.props.dispatch({ type: ACTIONS.SEED_DEMO_GRAPH });
+        seedDemoGraph({
+          colorMode: this.props.colorMode,
+          colorAssignments: this.props.colorAssignments,
+          dispatch: this.props.dispatch
+        });
       }
     });
   }
@@ -88,6 +120,15 @@ export class TopBar extends React.Component {
     return this.props.queryStatus === 'running' || this.props.connectionLoading || this.props.connectionSwitching;
   }
 
+  currentGraph() {
+    return {
+      nodes: this.props.nodes,
+      edges: this.props.edges,
+      colorMode: this.props.colorMode,
+      colorAssignments: this.props.colorAssignments
+    };
+  }
+
   graphActionsDisabled() {
     return this.props.queryStatus === 'running'
       || this.props.connectionLoading
@@ -100,7 +141,7 @@ export class TopBar extends React.Component {
       query,
       nodeLimit: this.props.nodeLimit,
       nodeLabels: this.props.nodeLabels,
-      current: { nodes: this.props.nodes, edges: this.props.edges },
+      current: this.currentGraph(),
       dispatch: this.props.dispatch
     });
   }
@@ -149,10 +190,14 @@ export class TopBar extends React.Component {
       return retryLastOperation({
         nodeLimit: this.props.nodeLimit,
         nodeLabels: this.props.nodeLabels,
-        current: { nodes: this.props.nodes, edges: this.props.edges },
+        current: this.currentGraph(),
         dispatch: this.props.dispatch,
         fallbackQuery: this.props.query
       });
+    }
+    if (action === 'scope-partition') {
+      this.scopeToPartition();
+      return undefined;
     }
     if (action === 'switch-connection') {
       if (!this.connectionSwitchDisabled()) {
@@ -239,7 +284,11 @@ export class TopBar extends React.Component {
             ? <><CircularProgress size={16} color="inherit" /> Running…</>
             : `Run ${runShortcut()}`}
         </button>
-        <RequestChargeChip diagnostics={this.props.latestDiagnostics} />
+        <RequestChargeChip
+          diagnostics={this.props.latestDiagnostics}
+          session={this.props.session}
+          onResetSession={() => dispatch({ type: ACTIONS.RESET_SESSION_CHARGE })}
+        />
         <SettingsPopover
           nodeLimit={this.props.nodeLimit}
           isPhysicsEnabled={this.props.isPhysicsEnabled}
@@ -272,13 +321,17 @@ export default connect((state) => ({
   queryStatus: state.gremlin.queryStatus,
   queryStatusMessage: state.gremlin.queryStatusMessage,
   latestDiagnostics: state.gremlin.latestDiagnostics,
+  session: state.gremlin.session,
   nodes: state.graph.nodes,
   edges: state.graph.edges,
+  selectedNode: state.graph.selectedNode,
   network: state.graph.network,
   nodeLabels: state.options.nodeLabels,
   nodeLimit: state.options.nodeLimit,
   queryHistory: state.options.queryHistory,
   historyCursor: state.options.historyCursor,
+  colorMode: state.options.colorMode,
+  colorAssignments: state.options.colorAssignments,
   isPhysicsEnabled: state.options.isPhysicsEnabled,
   networkOptions: state.options.networkOptions,
   connectionStatus: state.connection.status,

@@ -1,10 +1,11 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import ReactDOMServer from 'react-dom/server';
-import { Simulate } from 'react-dom/test-utils';
+import { act, Simulate } from 'react-dom/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TopBar } from './TopBar';
 import { getConnectionLabel } from './ConnectionChip';
-import { getRequestChargeParts } from './RequestChargeChip';
+import { RequestChargeChip, getRequestChargeParts, getSessionParts } from './RequestChargeChip';
 import { ACTIONS } from '../../constants';
 import { executeQuery, getConnection, switchConnection } from '../../api/gremlinApi';
 import { mount, unmountAll } from './testUtils';
@@ -35,6 +36,8 @@ const baseProps = {
   probeDiagnostics: null,
   queryHistory: [],
   historyCursor: null,
+  colorMode: 'type',
+  colorAssignments: { type: {}, partition: {} },
   isPhysicsEnabled: true,
   network: null,
   networkOptions: { physics: {} }
@@ -228,6 +231,10 @@ describe('top bar behaviour', () => {
     await bar.componentDidMount();
 
     expect(dispatch.mock.calls.some(([action]) => action.type === ACTIONS.SEED_DEMO_GRAPH)).toBe(seeded);
+    if (seeded) {
+      const seed = dispatch.mock.calls.find(([action]) => action.type === ACTIONS.SEED_DEMO_GRAPH)[0].payload;
+      expect(seed.nodes.every(node => node.color)).toBe(true);
+    }
   });
 
   it.each([
@@ -316,5 +323,98 @@ describe('top bar behaviour', () => {
     bar.onMessageAction('retry');
 
     expect(executeQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe('session RU total', () => {
+  it('formats the session tally', () => {
+    expect(getSessionParts({ total: 0, operations: 0, unpricedOperations: 0 })).toEqual({ total: 'Σ — RU', detail: '0 ops' });
+    expect(getSessionParts({ total: 41.2, operations: 12, unpricedOperations: 0 })).toEqual({ total: 'Σ 41.20 RU', detail: '12 ops' });
+    expect(getSessionParts({ total: 41.2, operations: 12, unpricedOperations: 2 })).toEqual({ total: 'Σ 41.20 RU', detail: '12 ops · 2 unpriced' });
+    expect(getSessionParts({ total: 3.75, operations: 1, unpricedOperations: 0 })).toEqual({ total: 'Σ 3.75 RU', detail: '1 op' });
+  });
+
+  it('resets the session total from its half of the chip', () => {
+    const onResetSession = vi.fn();
+    const root = mount(
+      <RequestChargeChip diagnostics={null} session={{ total: 2, operations: 1, unpricedOperations: 0 }} onResetSession={onResetSession} />
+    );
+    const button = root.querySelector('[aria-label^="Session total since this connection"]');
+
+    Simulate.click(button);
+
+    expect(onResetSession).toHaveBeenCalled();
+    expect(button.textContent).toContain('Σ 2.00 RU');
+  });
+
+  it('wires the reset to the store', () => {
+    const dispatch = vi.fn();
+    const root = mount(<TopBar {...baseProps} dispatch={dispatch} session={{ total: 2, operations: 1, unpricedOperations: 0 }} />);
+
+    Simulate.click(root.querySelector('[aria-label^="Session total since this connection"]'));
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_SESSION_CHARGE });
+  });
+});
+
+describe('scope to partition', () => {
+  it('rewrites the query with the selected node partition value and never runs it', () => {
+    const dispatch = vi.fn();
+    const bar = new TopBar({
+      ...baseProps,
+      dispatch,
+      query: 'g.V().limit(25)',
+      selectedNode: { id: 'project-cosmos', partition: { name: 'type', value: 'project' } }
+    });
+
+    bar.onMessageAction('scope-partition');
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_QUERY, payload: "g.V().has('type', 'project').limit(25)" });
+    expect(executeQuery).not.toHaveBeenCalled();
+  });
+
+  it('pre-fills a numeric partition value unquoted', () => {
+    const dispatch = vi.fn();
+    const bar = new TopBar({
+      ...baseProps,
+      dispatch,
+      query: 'g.V()',
+      connection: { mode: 'cosmos', endpointHost: 'a', database: 'b', container: 'c', partitionKey: 'tenantId' },
+      selectedNode: { id: 'n', partition: { name: 'tenantId', value: 1843 } }
+    });
+
+    bar.onMessageAction('scope-partition');
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_QUERY, payload: "g.V().has('tenantId', 1843)" });
+  });
+
+  it('leaves the value empty without a selected node', () => {
+    const dispatch = vi.fn();
+    const bar = new TopBar({ ...baseProps, dispatch, query: 'g.V()', selectedNode: {} });
+
+    bar.onMessageAction('scope-partition');
+
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.SET_QUERY, payload: "g.V().has('type', '')" });
+  });
+
+  it('puts the caret inside the inserted quotes once the new query renders', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    let bar;
+    act(() => {
+      bar = ReactDOM.render(<TopBar {...baseProps} query="g.V().limit(25)" />, container);
+    });
+
+    act(() => {
+      bar.onMessageAction('scope-partition');
+    });
+    act(() => {
+      ReactDOM.render(<TopBar {...baseProps} query="g.V().has('type', '').limit(25)" />, container);
+    });
+
+    const textarea = container.querySelector('textarea');
+    expect(document.activeElement).toBe(textarea);
+    expect(textarea.selectionStart).toBe("g.V().has('type', '".length);
+    ReactDOM.unmountComponentAtNode(container);
   });
 });
