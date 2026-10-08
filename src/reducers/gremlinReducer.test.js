@@ -57,14 +57,33 @@ describe('gremlin reducer', () => {
     });
   });
 
+  it('keeps a structured error and mirrors its message to the status line', () => {
+    const error = { message: 'Query needs an edit. Fix it.', action: 'edit-query', actionLabel: 'Edit query' };
+    const state = reducer(undefined, { type: ACTIONS.SET_ERROR, payload: error });
+
+    expect(state.error).toEqual(error);
+    expect(state.queryStatus).toBe('error');
+    expect(state.queryStatusMessage).toBe('Query needs an edit. Fix it.');
+  });
+
   it('moves to an error status when an error is set', () => {
     expect(reducer(undefined, {
       type: ACTIONS.SET_ERROR,
       payload: 'Enter a Gremlin query before executing.'
     })).toMatchObject({
-      error: 'Enter a Gremlin query before executing.',
+      error: { message: 'Enter a Gremlin query before executing.' },
       queryStatus: 'error',
       queryStatusMessage: 'Enter a Gremlin query before executing.'
     });
+  });
+
+  it('returns a finished or failed status to idle when the query is edited', () => {
+    const done = reducer(undefined, { type: ACTIONS.SET_QUERY_STATUS, payload: { status: 'success', message: '5 nodes, 5 edges · 2 new' } });
+    const edited = reducer(done, { type: ACTIONS.SET_QUERY, payload: 'g.V().limit(2)' });
+    expect(edited.queryStatus).toBe('idle');
+    expect(edited.queryStatusMessage).toBe('5 nodes, 5 edges · 2 new');
+
+    const running = reducer(undefined, { type: ACTIONS.SET_QUERY_STATUS, payload: { status: 'running', message: 'Executing Gremlin traversal...' } });
+    expect(reducer(running, { type: ACTIONS.SET_QUERY, payload: 'g.V()' }).queryStatus).toBe('running');
   });
 });

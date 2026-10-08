@@ -10,8 +10,10 @@ import RestoreIcon from '@material-ui/icons/Restore';
 import ZoomInIcon from '@material-ui/icons/ZoomIn';
 import ZoomOutIcon from '@material-ui/icons/ZoomOut';
 import CloseIcon from '@material-ui/icons/Close';
-import { ACTIONS } from '../../constants';
-import { applyGraphControl } from '../../logics/graphControls';
+import DeleteOutlineIcon from '@material-ui/icons/DeleteOutline';
+import { ACTIONS, INSPECTOR_INSET } from '../../constants';
+import { applyGraphControl, getVisibleCenterOffset } from '../../logics/graphControls';
+import InspectorCard from '../Inspector/InspectorCard';
 
 export const GraphHint = ({ visible, onDismiss }) => {
   if (!visible) {
@@ -28,6 +30,23 @@ export const GraphHint = ({ visible, onDismiss }) => {
       </Tooltip>
     </div>
   );
+};
+
+const pluralize = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+export const GraphCounts = ({ nodes, edges }) => (
+  <div className="graph-counts" aria-label="Graph summary">
+    {pluralize(nodes, 'node')} · {pluralize(edges, 'edge')}
+  </div>
+);
+
+export const clearGraph = (dispatch) => {
+  dispatch({ type: ACTIONS.CLEAR_GRAPH });
+  dispatch({ type: ACTIONS.CLEAR_OPERATION_DIAGNOSTICS });
+  dispatch({
+    type: ACTIONS.SET_QUERY_STATUS,
+    payload: { status: 'idle', message: 'Graph cleared. Query history is still available for reruns.' }
+  });
 };
 
 export const refreshNetworkNodeMeasurementsAfterFonts = (network, fontSet) => {
@@ -52,6 +71,21 @@ export const refreshNetworkNodeMeasurementsAfterFonts = (network, fontSet) => {
   });
 };
 
+export const keepNodeClearOfInspector = (network, nodeId, insetRight) => {
+  if (!network || !insetRight) {
+    return;
+  }
+  const position = network.getPositions([nodeId])[nodeId];
+  if (!position) {
+    return;
+  }
+  const canvasWidth = network.body && network.body.container ? network.body.container.clientWidth : 0;
+  if (network.canvasToDOM(position).x <= canvasWidth - insetRight) {
+    return;
+  }
+  network.moveTo({ position, offset: getVisibleCenterOffset(insetRight), animation: true });
+};
+
 // vis-network has no event for clicking empty canvas, so clear the selection on a bare click.
 export const handleCanvasClick = (params, dispatch) => {
   const hasNodes = params.nodes && params.nodes.length > 0;
@@ -61,12 +95,13 @@ export const handleCanvasClick = (params, dispatch) => {
   }
 };
 
-class NetworkGraph extends React.Component{
+export class NetworkGraph extends React.Component{
   constructor(props) {
     super(props);
     this.networkRef = React.createRef();
     this.state = {
-      isHintVisible: true
+      isHintDismissed: false,
+      hasSelectedOnce: false
     };
   }
 
@@ -86,6 +121,10 @@ class NetworkGraph extends React.Component{
     network.on('selectNode', (params) => {
       const nodeId = params.nodes && params.nodes.length > 0 ? params.nodes[0] : null;
       this.props.dispatch({ type: ACTIONS.SET_SELECTED_NODE, payload: nodeId });
+      this.markSelected();
+      if (nodeId !== null) {
+        keepNodeClearOfInspector(network, nodeId, INSPECTOR_INSET);
+      }
     });
 
     network.on("selectEdge", (params) => {
@@ -93,6 +132,7 @@ class NetworkGraph extends React.Component{
       const isNodeSelected = params.nodes && params.nodes.length > 0;
       if (!isNodeSelected && edgeId !== null) {
         this.props.dispatch({ type: ACTIONS.SET_SELECTED_EDGE, payload: edgeId });
+        this.markSelected();
       }
     });
 
@@ -105,6 +145,16 @@ class NetworkGraph extends React.Component{
     if (this.network) {
       this.network.destroy();
     }
+  }
+
+  markSelected() {
+    if (!this.state.hasSelectedOnce) {
+      this.setState({ hasSelectedOnce: true });
+    }
+  }
+
+  isHintVisible() {
+    return !this.state.isHintDismissed && !this.state.hasSelectedOnce;
   }
 
   onControl(command) {
@@ -122,8 +172,14 @@ class NetworkGraph extends React.Component{
     applyGraphControl(network, command, {
       selectedNode: this.props.selectedNode,
       selectedEdge: this.props.selectedEdge,
-      networkOptions: this.props.networkOptions
+      networkOptions: this.props.networkOptions,
+      insetRight: this.isInspectorOpen() ? INSPECTOR_INSET : 0
     });
+  }
+
+  isInspectorOpen() {
+    const hasItem = (selection) => Boolean(selection && Object.keys(selection).length > 0);
+    return hasItem(this.props.selectedNode) || hasItem(this.props.selectedEdge);
   }
 
   render(){
@@ -169,12 +225,26 @@ class NetworkGraph extends React.Component{
               {this.props.isPhysicsEnabled ? <PauseCircleFilledIcon fontSize="small" /> : <PlayCircleFilledIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
+          <Tooltip title="Clear graph (keeps query history)">
+            <span>
+              <IconButton
+                aria-label="Clear graph"
+                className="graph-toolbar__clear"
+                disabled={this.props.queryStatus === 'running'}
+                onClick={() => clearGraph(this.props.dispatch)}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
         </div>
-        <GraphHint
-          visible={this.state.isHintVisible}
-          onDismiss={() => this.setState({ isHintVisible: false })}
-        />
         <div ref={this.networkRef} className={'mynetwork'} />
+        <GraphCounts nodes={this.props.nodeCount} edges={this.props.edgeCount} />
+        <GraphHint
+          visible={this.isHintVisible()}
+          onDismiss={() => this.setState({ isHintDismissed: true })}
+        />
+        <InspectorCard />
       </section>
     );
   }
@@ -188,6 +258,9 @@ export const NetworkGraphComponent = connect((state)=>{
     selectedNode: state.graph.selectedNode,
     selectedEdge: state.graph.selectedEdge,
     isPhysicsEnabled: state.options.isPhysicsEnabled,
-    networkOptions: state.options.networkOptions
+    networkOptions: state.options.networkOptions,
+    nodeCount: state.graph.nodes.length,
+    edgeCount: state.graph.edges.length,
+    queryStatus: state.gremlin.queryStatus
   };
 })(NetworkGraph);
