@@ -64,26 +64,43 @@ export const clearGraph = (dispatch) => {
   });
 };
 
-export const refreshNetworkNodeMeasurementsAfterFonts = (network, fontSet) => {
-  const browserFonts = typeof document !== 'undefined' ? document.fonts : undefined;
-  const fonts = fontSet || browserFonts;
-  const fontReady = fonts && fonts.ready ? fonts.ready : Promise.resolve();
+const GRAPH_FONT = '12px "JetBrains Mono"';
 
-  return fontReady.then(() => {
-    if (!network) {
-      return;
-    }
+// Re-setting each label marks it dirty so vis-network measures it again; needsRefresh() alone
+// only resizes the shape around the cached label width.
+const remeasureNodes = (network) => {
+  const dataSet = network && network.body && network.body.data && network.body.data.nodes;
+  if (!dataSet) {
+    return;
+  }
+  const labels = dataSet.get().map(({ id, label }) => ({ id, label }));
+  if (labels.length > 0) {
+    dataSet.update(labels);
+  }
+  if (typeof network.redraw === 'function') {
+    network.redraw();
+  }
+};
 
-    Object.values(network.body && network.body.nodes ? network.body.nodes : {}).forEach((node) => {
-      if (node && typeof node.needsRefresh === 'function') {
-        node.needsRefresh();
+// vis-network measures a label once, when its node is added. A node added before JetBrains Mono
+// arrives keeps fallback-font metrics (the Production box drew its text off-centre), so request
+// the font explicitly and re-measure whenever font loading finishes.
+export const watchFontsForNetwork = (network, fontSet) => {
+  const fonts = fontSet === undefined && typeof document !== 'undefined' ? document.fonts : fontSet;
+  const onLoadingDone = () => remeasureNodes(network);
+  if (fonts && typeof fonts.addEventListener === 'function') {
+    fonts.addEventListener('loadingdone', onLoadingDone);
+  }
+  const request = fonts && typeof fonts.load === 'function' ? fonts.load(GRAPH_FONT) : Promise.resolve();
+  const ready = Promise.resolve(request).catch(() => {}).then(onLoadingDone);
+  return {
+    ready,
+    stop: () => {
+      if (fonts && typeof fonts.removeEventListener === 'function') {
+        fonts.removeEventListener('loadingdone', onLoadingDone);
       }
-    });
-
-    if (typeof network.redraw === 'function') {
-      network.redraw();
     }
-  });
+  };
 };
 
 const CARD_CLEARANCE = 24;
@@ -145,7 +162,7 @@ export class NetworkGraph extends React.Component{
     };
     const network = new vis.Network(this.networkRef.current, data, this.props.networkOptions);
     this.network = network;
-    refreshNetworkNodeMeasurementsAfterFonts(network);
+    this.fontWatcher = watchFontsForNetwork(network);
 
     network.on('stabilized', () => {
       network.stopSimulation();
@@ -175,6 +192,9 @@ export class NetworkGraph extends React.Component{
   }
 
   componentWillUnmount() {
+    if (this.fontWatcher) {
+      this.fontWatcher.stop();
+    }
     if (this.network) {
       this.network.destroy();
     }
