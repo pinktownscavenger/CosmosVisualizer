@@ -4,6 +4,7 @@
   --color-surface-strong: #1e293b;
   --color-panel: #111827;
   --color-border: #334155;
+  --color-border-strong: #64748b;
   --color-border-soft: rgba(148, 163, 184, 0.22);
   --color-text: #f8fafc;
   --color-muted: #94a3b8;
@@ -512,7 +513,7 @@ textarea:focus-visible,
   min-height: 44px;
   margin: 0;
   padding: 11px 12px;
-  border: 1px solid #64748b;
+  border: 1px solid var(--color-border-strong);
   border-radius: 6px;
   background: #020617;
   color: var(--color-text);

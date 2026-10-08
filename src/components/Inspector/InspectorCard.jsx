@@ -26,57 +26,33 @@ const defaultCopyText = (text) => {
   return navigator.clipboard.writeText(text);
 };
 
-const stopPropagation = (event) => event.stopPropagation();
+const COPY_STATUS_MS = 2000;
+
+const selectionId = ({ selectedNode, selectedEdge }) => (
+  (selectedNode && selectedNode.id) || (selectedEdge && selectedEdge.id)
+);
 
 export class Inspector extends React.Component {
   constructor(props) {
     super(props);
     this.state = { copyStatus: null };
-    this.cardRef = React.createRef();
     this.onKeyDown = this.onKeyDown.bind(this);
   }
 
   componentDidMount() {
     document.addEventListener('keydown', this.onKeyDown);
-    this.attachCardListeners();
   }
 
   componentDidUpdate(previousProps) {
-    this.attachCardListeners();
-    const previousId = (previousProps.selectedNode && previousProps.selectedNode.id)
-      || (previousProps.selectedEdge && previousProps.selectedEdge.id);
-    const currentId = (this.props.selectedNode && this.props.selectedNode.id)
-      || (this.props.selectedEdge && this.props.selectedEdge.id);
-    if (previousId !== currentId && this.state.copyStatus) {
-      this.setState({ copyStatus: null });
+    if (selectionId(previousProps) !== selectionId(this.props) && this.state.copyStatus) {
+      this.clearCopyStatus();
     }
   }
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.onKeyDown);
-    this.detachCardListeners();
-  }
-
-  // Native listeners so wheel/drag inside the card never reach vis-network's canvas handlers.
-  attachCardListeners() {
-    const card = this.cardRef.current;
-    if (card === this.listenedCard) {
-      return;
-    }
-    this.detachCardListeners();
-    if (card) {
-      card.addEventListener('wheel', stopPropagation);
-      card.addEventListener('mousedown', stopPropagation);
-    }
-    this.listenedCard = card;
-  }
-
-  detachCardListeners() {
-    if (this.listenedCard) {
-      this.listenedCard.removeEventListener('wheel', stopPropagation);
-      this.listenedCard.removeEventListener('mousedown', stopPropagation);
-      this.listenedCard = null;
-    }
+    clearTimeout(this.copyTimer);
+    this.unmounted = true;
   }
 
   onKeyDown(event) {
@@ -90,12 +66,29 @@ export class Inspector extends React.Component {
     return !isEmpty(this.props.selectedNode) || !isEmpty(this.props.selectedEdge);
   }
 
+  clearCopyStatus() {
+    clearTimeout(this.copyTimer);
+    this.setState({ copyStatus: null });
+  }
+
+  // The result only belongs to the item that was copied, and fades after a moment.
   copyId(id) {
     const copyText = this.props.copyText || defaultCopyText;
+    const showStatus = (copyStatus) => {
+      if (this.unmounted || selectionId(this.props) !== id) {
+        return;
+      }
+      clearTimeout(this.copyTimer);
+      this.setState({ copyStatus });
+      this.copyTimer = setTimeout(() => {
+        if (!this.unmounted) {
+          this.setState({ copyStatus: null });
+        }
+      }, COPY_STATUS_MS);
+    };
     return Promise.resolve()
       .then(() => copyText(String(id)))
-      .then(() => this.setState({ copyStatus: 'Copied' }))
-      .catch(() => this.setState({ copyStatus: 'Copy failed' }));
+      .then(() => showStatus('Copied'), () => showStatus('Copy failed'));
   }
 
   renderIdRow(id) {
@@ -122,7 +115,6 @@ export class Inspector extends React.Component {
 
     return (
       <aside
-        ref={this.cardRef}
         className={`inspector-card${collapsed ? ' inspector-card--collapsed' : ''}`}
         aria-label="Selection inspector"
       >

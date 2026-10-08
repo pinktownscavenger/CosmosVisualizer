@@ -128,6 +128,8 @@ describe('top bar labels', () => {
       .toEqual({ total: '1,204.10 RU', detail: 'inbound' });
     expect(getRequestChargeParts({ operation: 'query', requestCharge: null })).toEqual({ total: '— RU', detail: 'charge unavailable' });
     expect(getRequestChargeParts(null)).toEqual({ total: '— RU', detail: 'no operation yet' });
+    expect(getRequestChargeParts({ operation: 'query', requestCharge: { total: 2, requests: [] } }))
+      .toEqual({ total: '2.00 RU', detail: 'total only' });
   });
 });
 
