@@ -90,4 +90,15 @@ describe('graph controls', () => {
       offset: { x: -192, y: 0 }
     });
   });
+
+  it('restores dynamic curves when physics resumes or the layout resets', () => {
+    const network = makeNetwork();
+    const physics = { solver: 'forceAtlas2Based' };
+
+    applyGraphControl(network, 'physics', { enabled: true, networkOptions: { physics } });
+    applyGraphControl(network, 'reset-layout', { networkOptions: { physics } });
+
+    expect(network.setOptions).toHaveBeenNthCalledWith(1, { physics, edges: { smooth: { type: 'dynamic' } } });
+    expect(network.setOptions).toHaveBeenNthCalledWith(2, { physics, edges: { smooth: { type: 'dynamic' } } });
+  });
 });

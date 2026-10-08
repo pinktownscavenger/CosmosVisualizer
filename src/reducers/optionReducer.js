@@ -61,7 +61,7 @@ const initialState = {
         color: { background: '#f59e0b', border: '#fde68a' }
       },
       tag: {
-        color: { background: '#f43f5e', border: '#fecdd3' },
+        color: { background: '#334155', border: '#94a3b8' },
         labelHighlightBold: false,
         shape: 'box',
         margin: {
@@ -71,7 +71,7 @@ const initialState = {
           left: 20
         },
         font: {
-          color: '#fff1f2',
+          color: '#f1f5f9',
           face: 'JetBrains Mono',
           size: 10,
           strokeColor: '#0f172a',
@@ -91,11 +91,11 @@ const initialState = {
         color: '#cbd5e1',
         face: 'JetBrains Mono',
         size: 11,
-        strokeColor: '#0f172a',
-        strokeWidth: 3
+        background: 'rgba(11, 17, 32, 0.92)',
+        strokeWidth: 0
       },
       smooth: {
-        type: 'continuous'
+        type: 'dynamic'
       }
     }
   }
