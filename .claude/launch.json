@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fixture",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "PORT=3001 npm run start:fixture"],
+      "port": 5173
+    }
+  ]
+}
