@@ -1,0 +1,32 @@
+# CosmosVisualizer at a glance: the browser never talks to Cosmos DB directly.
+# The local proxy holds the credentials and queries either Cosmos DB or, in
+# fixture mode, a built-in demo graph.
+# Rendered with the d2-diagrams skill: theme 0, dark theme 200.
+
+direction: right
+
+classes: {
+  app: {style: {border-radius: 8}}
+  ext: {style: {stroke-dash: 3}}
+}
+
+user: You {shape: person}
+
+ui: "React UI\nlocalhost:5173" {class: app}
+
+proxy: "Node proxy\nlocalhost:3001\nholds the Cosmos key" {class: app}
+
+cosmos: "Azure Cosmos DB\nGremlin API" {
+  class: ext
+  shape: cloud
+}
+
+fixture: "Fixture client\nbuilt-in demo graph" {
+  class: app
+  shape: stored_data
+}
+
+user -> ui
+ui <-> proxy: "query · graph + RU"
+proxy -> cosmos: "Gremlin over WSS"
+proxy -> fixture: "fixture mode" {style.stroke-dash: 3}

@@ -63,7 +63,7 @@ HOST=127.0.0.1
 VITE_API_BASE_URL=
 ```
 
-Leave `VITE_API_BASE_URL` blank during local development so the Vite dev server proxies API requests to the local Node server. Set it only when the frontend is served from a different origin than the API proxy.
+Leave `VITE_API_BASE_URL` blank unless the frontend is served from a different origin than the proxy.
 
 Start the app:
 
@@ -71,16 +71,13 @@ Start the app:
 npm start
 ```
 
-The proxy reads `.env` from the project root on startup; variables already set in your shell take precedence. The frontend runs on port `5173` and the API proxy on `3001`, both on loopback only, so your Cosmos key is not reachable from other machines. Set `HOST` only if you deliberately need to expose the proxy.
+Shell variables take precedence over `.env`. Both servers listen on loopback only; set `HOST` only if you deliberately need to expose the proxy. If a Cosmos variable is missing or invalid, the app starts disconnected and you can connect from the connection chip in the top bar.
 
-If any of the five Cosmos variables is missing or invalid, the server logs a warning and starts disconnected; you can then connect from the connection chip at the left of the top bar.
-
-The partition-key setting accepts a property name such as `type` or `/type`. It is used for partition display and fan-out advisories; it is not inferred from the graph schema.
+`COSMOS_PARTITION_KEY` takes a property name such as `type` or `/type`; it drives partition display and fan-out advisories.
 
 ## Features
 
 - Credential-free fixture mode with a seeded demo graph. Real Cosmos connections start empty and spend no RUs until you run a query.
-- Credentials stay server-side in the local proxy.
 - Switch connections in the app without restarting the proxy.
 - A single top bar: connection chip, multi-line query editor (⌘↵ / Ctrl+↵ to run, ↑/↓ to recall history), history menu, RU readouts, and settings.
 - Per-operation RU totals with vertex/edge breakdowns, plus a session total that resets on a connection switch or when clicked.
@@ -93,13 +90,11 @@ The partition-key setting accepts a property name such as `type` or `/type`. It 
 
 ## How It Works
 
-The browser posts `{ query, nodeLimit }` to the proxy's `/query` endpoint. The proxy runs the vertex query through the Gremlin driver (applying the node limit), fetches edges adjacent to the returned vertices, and returns a normalized graph with RU diagnostics. `/traverse` does the same for traversals from the selected node, and `/connection` probes a candidate connection before replacing the active one.
+![The browser talks only to the local Node proxy, which holds the Cosmos key and queries Azure Cosmos DB over Gremlin, or a built-in demo graph in fixture mode](.github/assets/architecture.svg)
 
-One graph operation can make separate vertex and edge requests; the displayed total sums both and keeps the breakdown visible. Missing charge metadata is shown as unavailable rather than zero. A successful connection switch clears the graph and selection but keeps query text and history; a failed probe changes nothing.
+The browser never talks to Cosmos DB directly. It sends queries to the local proxy, which runs the vertex query, fetches the adjacent edges, and returns the graph with its RU charges. In fixture mode the proxy answers from a built-in demo graph through the same code paths, so everything except a real connection can be tried without Azure.
 
-Broad `g.V()` scans, id lookups without partition scope, and inbound or bidirectional steps produce fan-out advisories. These never rewrite or block a query. If Cosmos does not return the partition property for a vertex, the inspector says so instead of guessing.
-
-When Cosmos rejects a query's syntax, the UI offers **Edit query**; other failures offer **Retry**. The fixture client rejects malformed Gremlin the same way, so error recovery can be tried locally.
+Fan-out advisories never rewrite or block a query, and RU or partition data that Cosmos does not return is shown as unavailable rather than guessed.
 
 ## Credentials
 
